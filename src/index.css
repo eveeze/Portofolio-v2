@@ -1,0 +1,76 @@
+/*index.css*/
+
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+@theme {
+  --color-background: #080808;
+  --color-background2: #0b0b0d;
+  --color-whiteText: #efefee;
+  --color-quotes: #737373;
+  --color-grayText: #848484;
+}
+
+@font-face {
+  font-family: "cencschit";
+  src: url("../src/font/CenSchIt.ttf") format("ttf");
+  font-weight: 400;
+  /* Regular */
+  font-style: italic;
+}
+
+@font-face {
+  font-family: "centsbook";
+  src: url("../src/font/CenturySchoolbookBT-Monospace_60f4684e.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Ogg";
+  src: url("/src/font/Ogg-BoldItalic-BF646c18fbc870f.otf") format("otf");
+  font-weight: 700;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: "Oggs";
+  src: url("../src/font/Ogg-Regular_c846b32c.woff2") format("woff2");
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-background2;
+}
+
+.scroll-float {
+  overflow: hidden;
+}
+
+.scroll-float-text {
+  display: inline-block;
+  font-weight: 900;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.char {
+  display: inline-block;
+}
+
+@layer utilities {
+  .marquee-container {
+    @apply w-full overflow-hidden relative whitespace-nowrap;
+  }
+
+  .marquee-content {
+    @apply flex gap-4 absolute will-change-transform pr-4;
+  }
+
+  .right-marquee {
+    min-width: 200%;
+  }
+
+
+}
