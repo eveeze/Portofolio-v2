@@ -1,28 +1,27 @@
 import HighlightedText from "../../ui/HighlightedText";
-import GitHubContributionsGraph from "../../ui/GitHubContributionsGraph";
 import WorkingStatus from "../../ui/WorkingStatus";
 import FindMe from "./FindMe";
 import TechStack from "./TechStack";
 const Cv = () => {
   return (
-    <div className="flex w-full max-w-3xl mx-auto p-6 flex-col gap-8 rounded-2xl mt-16">
+    <div className=" max-w-3xl mx-auto p-6  gap-8 rounded-2xl mt-16">
       <div className="flex flex-col ">
         <div className="flex items-start gap-4">
           <div className="flex-shrink-0 ">
             <img
               src="/images/pp.jpg"
               alt="Profile Picture"
-              className="size-20 rounded-full object-cover border border-gray-700"
+              className="w-20 h-20 rounded-full object-cover border border-grayText"
             />
           </div>
           <div className="flex flex-col gap-1">
             <WorkingStatus isEmployed={false} />
 
-            <h2 className="text-whiteText text-xl font-bold font-centsbook mt-1">
+            <h2 className="text-whiteText text-xl font-bold font-centsbook mt-0.5">
               Tito Zaki Saputro
             </h2>
             <p className="text-grayText text-sm font-centsbook">
-              Software Engineer
+              Fullstack Developer
             </p>
             <p className="text-grayText font-cencschit text-sm mt-2">
               I am a 21-year-old college student at{" "}
@@ -55,7 +54,6 @@ const Cv = () => {
               />{" "}
             </p>
             <TechStack />
-            <GitHubContributionsGraph />
           </div>
         </div>
       </div>
