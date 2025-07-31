@@ -12,7 +12,7 @@ const Navbar = () => {
           </Link>
         </div>
         <div className="flex gap-8">
-          <ul className="flex justify-between space-x-4 text-sm font-normal text-whiteText">
+          <ul className="flex justify-between  space-x-4 text-sm font-normal text-whiteText">
             <li>
               <Link to={"/about"}>ABOUT</Link>
             </li>
