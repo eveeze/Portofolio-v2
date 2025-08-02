@@ -82,7 +82,9 @@ export const generateRegistrationOptionsAction = action({
     const options = await generateRegistrationOptions({
       rpName: "Portfolio Admin",
       rpID,
-      userName: username, // =====================================================================
+      userName: username,
+      userDisplayName: username,
+      // =====================================================================
       // PERBAIKAN: Baris `userID` di bawah ini dihapus.
       // Pustaka akan membuat `user.id` secara otomatis.
       // userID: new TextEncoder().encode(userId), // <-- BARIS INI DIHAPUS
