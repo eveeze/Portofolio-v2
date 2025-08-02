@@ -1,19 +1,29 @@
-// convex/schema.ts - FIXED VERSION
+// convex/schema.ts
+
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
   users: defineTable({
     username: v.string(),
+    isRegistrationComplete: v.boolean(),
     currentChallenge: v.optional(v.string()),
-    isRegistrationComplete: v.optional(v.boolean()), // Flag untuk status registrasi
-  }).index("by_username", ["username"]),
+    // PASTIKAN BARIS INI ADA
+    webauthnUserID: v.optional(v.string()),
+  })
+    .index("by_username", ["username"])
+    .index("by_challenge", ["currentChallenge"]),
 
   authenticators: defineTable({
     userId: v.id("users"),
-    credentialID: v.string(), // PERBAIKAN: Ubah ke string (base64url format)
-    credentialPublicKey: v.string(), // PERBAIKAN: Ubah ke string (base64 format)
+    webauthnUserID: v.string(),
+    credentialID: v.string(),
+    credentialPublicKey: v.string(),
     counter: v.number(),
+    deviceType: v.string(),
+    backedUp: v.boolean(),
     transports: v.optional(v.array(v.string())),
-  }).index("by_userId", ["userId"]),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_credentialID", ["credentialID"]),
 });

@@ -1,20 +1,12 @@
-// convex/authHelpers.ts (Convex runtime - no "use node") - FIXED VERSION
 import { v } from "convex/values";
 import { internalMutation, internalQuery, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-
-// Helper types for cleaner code
-type UserDoc = Doc<"users">;
-type AuthenticatorDoc = Doc<"authenticators">;
 
 // --- INTERNAL QUERIES ---
 
 export const getUserByUsername = internalQuery({
   args: { username: v.string() },
-  handler: async (
-    ctx: QueryCtx,
-    { username }: { username: string }
-  ): Promise<UserDoc | null> => {
+  handler: async (ctx, { username }) => {
     return await ctx.db
       .query("users")
       .withIndex("by_username", (q) => q.eq("username", username))
@@ -24,20 +16,14 @@ export const getUserByUsername = internalQuery({
 
 export const getUserById = internalQuery({
   args: { userId: v.id("users") },
-  handler: async (
-    ctx: QueryCtx,
-    { userId }: { userId: Id<"users"> }
-  ): Promise<UserDoc | null> => {
+  handler: async (ctx, { userId }) => {
     return await ctx.db.get(userId);
   },
 });
 
 export const getAuthenticatorsByUserId = internalQuery({
   args: { userId: v.id("users") },
-  handler: async (
-    ctx: QueryCtx,
-    { userId }: { userId: Id<"users"> }
-  ): Promise<AuthenticatorDoc[]> => {
+  handler: async (ctx, { userId }) => {
     return await ctx.db
       .query("authenticators")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
@@ -46,27 +32,34 @@ export const getAuthenticatorsByUserId = internalQuery({
 });
 
 export const getAuthenticatorByCredentialID = internalQuery({
-  args: { credentialID: v.string() }, // PERBAIKAN: Ubah ke string (base64url)
-  handler: async (
-    ctx: QueryCtx,
-    { credentialID }: { credentialID: string } // PERBAIKAN: Ubah ke string
-  ): Promise<AuthenticatorDoc | null> => {
+  args: { credentialID: v.string() },
+  handler: async (ctx, { credentialID }) => {
     return await ctx.db
       .query("authenticators")
-      .filter((q) => q.eq(q.field("credentialID"), credentialID))
-      .first();
+      .withIndex("by_credentialID", (q) => q.eq("credentialID", credentialID))
+      .unique();
   },
 });
 
-// Query untuk menghitung jumlah user yang sudah menyelesaikan registrasi
 export const getUserCount = internalQuery({
   args: {},
-  handler: async (ctx: QueryCtx): Promise<number> => {
+  handler: async (ctx) => {
     const users = await ctx.db
       .query("users")
       .filter((q) => q.eq(q.field("isRegistrationComplete"), true))
       .collect();
     return users.length;
+  },
+});
+
+export const getUserByChallenge = internalQuery({
+  args: { challenge: v.string() },
+  handler: async (ctx, { challenge }) => {
+    if (!challenge) return null;
+    return await ctx.db
+      .query("users")
+      .withIndex("by_challenge", (q) => q.eq("currentChallenge", challenge))
+      .unique();
   },
 });
 
@@ -88,45 +81,69 @@ export const createUser = internalMutation({
 export const completeUserRegistration = internalMutation({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
-    await ctx.db.patch(userId, { isRegistrationComplete: true });
+    // Hanya hapus challenge, JANGAN hapus webauthnUserID
+    await ctx.db.patch(userId, {
+      isRegistrationComplete: true,
+      currentChallenge: undefined,
+    });
   },
 });
 
 export const deleteUser = internalMutation({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
-    // Hapus semua authenticators milik user ini
     const authenticators = await ctx.db
       .query("authenticators")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .collect();
-
     for (const auth of authenticators) {
       await ctx.db.delete(auth._id);
     }
-
-    // Hapus user
     await ctx.db.delete(userId);
   },
 });
 
 export const setUserCurrentChallenge = internalMutation({
-  args: { userId: v.id("users"), challenge: v.optional(v.string()) },
-  handler: async (ctx, { userId, challenge }) => {
-    await ctx.db.patch(userId, { currentChallenge: challenge });
+  args: {
+    userId: v.id("users"),
+    challenge: v.optional(v.string()),
+    webauthnUserID: v.optional(v.string()),
+  },
+  handler: async (ctx, { userId, challenge, webauthnUserID }) => {
+    const patchData: { currentChallenge?: string; webauthnUserID?: string } =
+      {};
+    if (challenge !== undefined) {
+      patchData.currentChallenge = challenge;
+    }
+    if (webauthnUserID !== undefined) {
+      patchData.webauthnUserID = webauthnUserID;
+    }
+    await ctx.db.patch(userId, patchData);
   },
 });
 
 export const createAuthenticator = internalMutation({
   args: {
     userId: v.id("users"),
-    credentialID: v.string(), // PERBAIKAN: Ubah ke string (base64url)
-    credentialPublicKey: v.string(), // PERBAIKAN: Ubah ke string (base64)
+    webauthnUserID: v.string(),
+    credentialID: v.string(),
+    credentialPublicKey: v.string(),
     counter: v.number(),
+    deviceType: v.string(),
+    backedUp: v.boolean(),
     transports: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    await ctx.db.insert("authenticators", args);
+    await ctx.db.insert("authenticators", {
+      userId: args.userId,
+      webauthnUserID: args.webauthnUserID,
+      credentialID: args.credentialID,
+      credentialPublicKey: args.credentialPublicKey,
+      counter: args.counter,
+      deviceType: args.deviceType,
+      backedUp: args.backedUp,
+      transports: args.transports || [],
+    });
   },
 });
 
