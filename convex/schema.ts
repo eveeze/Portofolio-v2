@@ -26,4 +26,10 @@ export default defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_credentialID", ["credentialID"]),
+
+  techStacks: defineTable({
+    name: v.string(),
+    category: v.string(),
+    storageId: v.id("_storage"),
+  }).index("by_category", ["category"]),
 });

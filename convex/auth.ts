@@ -84,11 +84,6 @@ export const generateRegistrationOptionsAction = action({
       rpID,
       userName: username,
       userDisplayName: username,
-      // =====================================================================
-      // PERBAIKAN: Baris `userID` di bawah ini dihapus.
-      // Pustaka akan membuat `user.id` secara otomatis.
-      // userID: new TextEncoder().encode(userId), // <-- BARIS INI DIHAPUS
-      // =====================================================================
       attestationType: "none",
       excludeCredentials: userAuthenticators.map((auth) => ({
         id: auth.credentialID,
@@ -100,7 +95,7 @@ export const generateRegistrationOptionsAction = action({
         userVerification: "preferred",
       },
       supportedAlgorithmIDs: [-7, -257],
-    }); // Kode ini sudah benar, menyimpan challenge DAN webauthnUserID yang dibuat oleh pustaka.
+    });
 
     await ctx.runMutation(internal.authHelpers.setUserCurrentChallenge, {
       userId,
