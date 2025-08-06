@@ -1,3 +1,4 @@
+// /convex/authHelpers.ts
 import { v } from "convex/values";
 import { internalMutation, internalQuery, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";

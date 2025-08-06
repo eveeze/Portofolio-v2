@@ -13,8 +13,12 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as articles from "../articles.js";
 import type * as auth from "../auth.js";
+import type * as authActions from "../authActions.js";
 import type * as authHelpers from "../authHelpers.js";
+import type * as http from "../http.js";
+import type * as projects from "../projects.js";
 import type * as techStack from "../techStack.js";
 
 /**
@@ -26,8 +30,12 @@ import type * as techStack from "../techStack.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  articles: typeof articles;
   auth: typeof auth;
+  authActions: typeof authActions;
   authHelpers: typeof authHelpers;
+  http: typeof http;
+  projects: typeof projects;
   techStack: typeof techStack;
 }>;
 export declare const api: FilterApi<
