@@ -60,6 +60,52 @@ body {
   display: inline-block;
 }
 
+.preloader-text {
+  perspective: 1000px;
+  transform-style: preserve-3d;
+}
+
+.preloader-char {
+  transform-origin: center bottom;
+  backface-visibility: hidden;
+}
+
+/* Prevent scrolling during preload */
+.preloader-active {
+  overflow: hidden;
+  height: 100vh;
+}
+
+.transform-gpu {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Prevent scrolling and improve performance during preload */
+body.preloader-active {
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Font loading optimization */
+@font-face {
+  font-family: 'PreloaderFont';
+  src: local('Arial Black'), local('Arial');
+  font-display: swap;
+  font-weight: 900;
+}
+
+/* Smooth hardware acceleration */
+.preloader-text {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+
 @layer utilities {
   .marquee-container {
     @apply w-full overflow-hidden relative whitespace-nowrap;
