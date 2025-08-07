@@ -9,6 +9,8 @@ import AdminDashboard from "./components/pages/AdminDashboard";
 import AdminTechStack from "./components/pages/AdminTechStack";
 import AdminProjects from "./components/pages/AdminProjects";
 import AdminArticles from "./components/pages/AdminArticles";
+import CreateArticle from "./components/pages/CreateArticle";
+import EditArticle from "./components/pages/EditArticle";
 import Navbar from "./components/ui/Navbar";
 import ProtectedRoute from "./components/ui/ProtectedRoute";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -90,6 +92,23 @@ const App = () => {
           element={
             <ProtectedRoute>
               <AdminArticles />
+            </ProtectedRoute>
+          }
+        />
+        {/* Article Management Routes */}
+        <Route
+          path="/admin/articles/create"
+          element={
+            <ProtectedRoute>
+              <CreateArticle />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/articles/edit/:id"
+          element={
+            <ProtectedRoute>
+              <EditArticle />
             </ProtectedRoute>
           }
         />

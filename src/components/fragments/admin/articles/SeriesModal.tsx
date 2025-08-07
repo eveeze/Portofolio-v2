@@ -6,8 +6,8 @@ interface Series {
   name: string;
   slug: string;
   description?: string;
-  status: "active" | "completed" | "draft";
-  articlesCount?: number;
+  status: "active" | "completed";
+  articleCount?: number; // Changed from articlesCount to articleCount to match the backend response
   _creationTime: number;
 }
 
@@ -15,18 +15,20 @@ interface SeriesModalProps {
   isOpen: boolean;
   onClose: () => void;
   series: Series[];
+  onSeriesUpdated?: () => void;
 }
 
 interface SeriesFormData {
   name: string;
   description: string;
-  status: "active" | "completed" | "draft";
+  status: "active" | "completed";
 }
 
 const SeriesModal: React.FC<SeriesModalProps> = ({
   isOpen,
   onClose,
   series,
+  onSeriesUpdated,
 }) => {
   const { token } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -34,7 +36,7 @@ const SeriesModal: React.FC<SeriesModalProps> = ({
   const [formData, setFormData] = useState<SeriesFormData>({
     name: "",
     description: "",
-    status: "draft",
+    status: "active",
   });
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -47,10 +49,27 @@ const SeriesModal: React.FC<SeriesModalProps> = ({
     return CONVEX_HTTP_URL;
   };
 
+  // Helper function to generate URL-friendly slug
+  const generateSlug = (name: string) => {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  };
+
   const statusOptions = [
-    { value: "draft", label: "Draft", color: "#F59E0B" },
-    { value: "active", label: "Active", color: "#10B981" },
-    { value: "completed", label: "Completed", color: "#6366F1" },
+    {
+      value: "active",
+      label: "Active",
+      color: "#10B981",
+      description: "Series is actively being written",
+    },
+    {
+      value: "completed",
+      label: "Completed",
+      color: "#6366F1",
+      description: "All articles in the series are published",
+    },
   ];
 
   const filteredSeries = series.filter(
@@ -63,7 +82,7 @@ const SeriesModal: React.FC<SeriesModalProps> = ({
   useEffect(() => {
     if (!isOpen) {
       setEditingSeries(null);
-      setFormData({ name: "", description: "", status: "draft" });
+      setFormData({ name: "", description: "", status: "active" });
       setSearchTerm("");
     }
   }, [isOpen]);
@@ -84,8 +103,11 @@ const SeriesModal: React.FC<SeriesModalProps> = ({
     setIsLoading(true);
     try {
       const apiBaseUrl = getApiBaseUrl();
+      const slug = generateSlug(formData.name.trim());
+
       const payload = {
         name: formData.name.trim(),
+        slug: slug,
         description: formData.description.trim() || undefined,
         status: formData.status,
       };
@@ -123,8 +145,18 @@ const SeriesModal: React.FC<SeriesModalProps> = ({
         );
       }
 
-      setFormData({ name: "", description: "", status: "draft" });
+      setFormData({ name: "", description: "", status: "active" });
       setEditingSeries(null);
+
+      if (onSeriesUpdated) {
+        onSeriesUpdated();
+      }
+
+      alert(
+        editingSeries
+          ? "Series updated successfully!"
+          : "Series created successfully!"
+      );
     } catch (error: any) {
       console.error("Save error:", error);
       alert(`Failed to save series: ${error.message}`);
@@ -164,6 +196,12 @@ const SeriesModal: React.FC<SeriesModalProps> = ({
           errorData.error || `Failed to delete: ${response.status}`
         );
       }
+
+      if (onSeriesUpdated) {
+        onSeriesUpdated();
+      }
+
+      alert("Series deleted successfully!");
     } catch (error: any) {
       console.error("Delete error:", error);
       alert(`Failed to delete series: ${error.message}`);
@@ -183,9 +221,9 @@ const SeriesModal: React.FC<SeriesModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-background border border-gray-800 rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+      <div className="bg-background border border-gray-800 rounded-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-800">
+        <div className="flex items-center justify-between p-6 border-b border-gray-800 flex-shrink-0">
           <div>
             <h2 className="text-2xl font-bold text-whiteText">Manage Series</h2>
             <p className="text-grayText mt-1">
@@ -212,89 +250,135 @@ const SeriesModal: React.FC<SeriesModalProps> = ({
           </button>
         </div>
 
-        <div className="flex h-[600px]">
+        {/* Content with proper scrolling */}
+        <div className="flex flex-1 overflow-hidden">
           {/* Form Section */}
-          <div className="w-1/2 p-6 border-r border-gray-800">
-            <form onSubmit={handleSave} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-whiteText mb-2">
-                  Series Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  className="w-full px-4 py-3 bg-background2 border border-gray-700 rounded-lg text-whiteText focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter series name"
-                  required
-                />
-              </div>
+          <div className="w-1/2 border-r border-gray-800 flex flex-col">
+            <div className="flex-1 overflow-y-auto p-6">
+              <form onSubmit={handleSave} className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-whiteText mb-2">
+                    Series Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    className="w-full px-4 py-3 bg-background2 border border-gray-700 rounded-lg text-whiteText focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter series name"
+                    required
+                  />
+                  {formData.name && (
+                    <p className="text-xs text-grayText mt-1">
+                      Slug: {generateSlug(formData.name)}
+                    </p>
+                  )}
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-whiteText mb-2">
-                  Description
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  className="w-full px-4 py-3 bg-background2 border border-gray-700 rounded-lg text-whiteText focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Describe what this series covers"
-                  rows={4}
-                />
-              </div>
+                <div>
+                  <label className="block text-sm font-medium text-whiteText mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
+                    className="w-full px-4 py-3 bg-background2 border border-gray-700 rounded-lg text-whiteText focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    placeholder="Describe what this series covers"
+                    rows={4}
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-whiteText mb-2">
-                  Status
-                </label>
-                <div className="space-y-3">
-                  {statusOptions.map((option) => (
-                    <label
-                      key={option.value}
-                      className="flex items-center space-x-3 cursor-pointer"
-                    >
-                      <input
-                        type="radio"
-                        name="status"
-                        value={option.value}
-                        checked={formData.status === option.value}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            status: e.target.value as any,
-                          })
-                        }
-                        className="w-4 h-4 text-blue-600 bg-background2 border-gray-600 focus:ring-blue-500 focus:ring-2"
-                      />
-                      <div className="flex items-center space-x-2">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: option.color }}
+                <div>
+                  <label className="block text-sm font-medium text-whiteText mb-2">
+                    Status
+                  </label>
+                  <div className="space-y-3">
+                    {statusOptions.map((option) => (
+                      <label
+                        key={option.value}
+                        className="flex items-start space-x-3 cursor-pointer group"
+                      >
+                        <input
+                          type="radio"
+                          name="status"
+                          value={option.value}
+                          checked={formData.status === option.value}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              status: e.target.value as "active" | "completed",
+                            })
+                          }
+                          className="w-4 h-4 text-blue-600 bg-background2 border-gray-600 focus:ring-blue-500 focus:ring-2 mt-0.5"
                         />
-                        <span className="text-whiteText">{option.label}</span>
-                      </div>
-                    </label>
-                  ))}
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <div
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: option.color }}
+                            />
+                            <span className="text-whiteText font-medium">
+                              {option.label}
+                            </span>
+                          </div>
+                          <p className="text-sm text-grayText group-hover:text-gray-300 transition-colors">
+                            {option.description}
+                          </p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
                 </div>
-                <div className="mt-2 text-sm text-grayText">
-                  {formData.status === "draft" &&
-                    "Series is not visible to readers"}
-                  {formData.status === "active" &&
-                    "Series is actively being written"}
-                  {formData.status === "completed" &&
-                    "All articles in the series are published"}
-                </div>
-              </div>
 
+                {/* Preview */}
+                {formData.name && (
+                  <div className="p-4 bg-background2 rounded-lg border border-gray-700">
+                    <h3 className="text-whiteText text-sm font-medium mb-3">
+                      Preview:
+                    </h3>
+                    <div className="flex items-center space-x-2 mb-2">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{
+                          backgroundColor: getStatusConfig(formData.status)
+                            .color,
+                        }}
+                      />
+                      <span className="text-whiteText font-medium">
+                        {formData.name}
+                      </span>
+                      <span
+                        className="px-2 py-1 rounded-full text-xs font-medium"
+                        style={{
+                          backgroundColor: `${getStatusConfig(formData.status).color}20`,
+                          color: getStatusConfig(formData.status).color,
+                        }}
+                      >
+                        {getStatusConfig(formData.status).label}
+                      </span>
+                    </div>
+                    {formData.description && (
+                      <p className="text-grayText text-sm">
+                        {formData.description}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </form>
+            </div>
+
+            {/* Sticky Form Actions */}
+            <div className="p-6 border-t border-gray-700 bg-background flex-shrink-0">
               <div className="flex space-x-4">
                 <button
                   type="submit"
                   disabled={isLoading || !formData.name.trim()}
-                  className="flex-1 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200"
+                  onClick={handleSave}
+                  className="flex-1 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-all duration-200"
                 >
                   {isLoading
                     ? "Saving..."
@@ -310,55 +394,23 @@ const SeriesModal: React.FC<SeriesModalProps> = ({
                       setFormData({
                         name: "",
                         description: "",
-                        status: "draft",
+                        status: "active",
                       });
                     }}
-                    className="px-6 py-3 text-grayText hover:text-whiteText hover:bg-gray-800 rounded-lg font-medium transition-all duration-200"
+                    disabled={isLoading}
+                    className="px-6 py-3 text-grayText hover:text-whiteText hover:bg-gray-800 disabled:opacity-50 rounded-lg font-medium transition-all duration-200"
                   >
                     Cancel
                   </button>
                 )}
               </div>
-            </form>
-
-            {/* Preview */}
-            {formData.name && (
-              <div className="mt-6 p-4 bg-background2 rounded-lg border border-gray-700">
-                <h3 className="text-whiteText text-sm font-medium mb-2">
-                  Preview:
-                </h3>
-                <div className="flex items-center space-x-2">
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{
-                      backgroundColor: getStatusConfig(formData.status).color,
-                    }}
-                  />
-                  <span className="text-whiteText font-medium">
-                    {formData.name}
-                  </span>
-                  <span
-                    className="px-2 py-1 rounded-full text-xs font-medium"
-                    style={{
-                      backgroundColor: `${getStatusConfig(formData.status).color}20`,
-                      color: getStatusConfig(formData.status).color,
-                    }}
-                  >
-                    {getStatusConfig(formData.status).label}
-                  </span>
-                </div>
-                {formData.description && (
-                  <p className="text-grayText text-sm mt-2">
-                    {formData.description}
-                  </p>
-                )}
-              </div>
-            )}
+            </div>
           </div>
 
           {/* List Section */}
           <div className="w-1/2 flex flex-col">
-            <div className="p-6 border-b border-gray-800">
+            {/* Search Header */}
+            <div className="p-6 border-b border-gray-800 flex-shrink-0">
               <div className="relative">
                 <svg
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-grayText"
@@ -383,6 +435,7 @@ const SeriesModal: React.FC<SeriesModalProps> = ({
               </div>
             </div>
 
+            {/* Scrollable List */}
             <div className="flex-1 overflow-y-auto p-6">
               {filteredSeries.length === 0 ? (
                 <div className="text-center py-8">
@@ -406,11 +459,19 @@ const SeriesModal: React.FC<SeriesModalProps> = ({
                       ? "No series found matching your search"
                       : "No series created yet"}
                   </p>
+                  {!searchTerm && (
+                    <p className="text-grayText text-sm mt-2">
+                      Create your first series to organize related articles
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-3">
                   {filteredSeries.map((seriesItem) => {
                     const statusConfig = getStatusConfig(seriesItem.status);
+                    // Use articleCount (from backend) and provide fallback to 0
+                    const articleCount = seriesItem.articleCount ?? 0;
+
                     return (
                       <div
                         key={seriesItem._id}
@@ -458,7 +519,8 @@ const SeriesModal: React.FC<SeriesModalProps> = ({
                                 />
                               </svg>
                               <span>
-                                {seriesItem.articlesCount || 0} articles
+                                {articleCount}{" "}
+                                {articleCount === 1 ? "article" : "articles"}
                               </span>
                             </span>
                             <span>
@@ -476,7 +538,8 @@ const SeriesModal: React.FC<SeriesModalProps> = ({
                         <div className="flex space-x-2 ml-4">
                           <button
                             onClick={() => handleEdit(seriesItem)}
-                            className="p-2 text-grayText hover:text-orange-400 hover:bg-orange-900/20 rounded-lg transition-all duration-200"
+                            disabled={isLoading}
+                            className="p-2 text-grayText hover:text-orange-400 hover:bg-orange-900/20 disabled:opacity-50 rounded-lg transition-all duration-200"
                             title="Edit"
                           >
                             <svg
@@ -495,7 +558,8 @@ const SeriesModal: React.FC<SeriesModalProps> = ({
                           </button>
                           <button
                             onClick={() => handleDelete(seriesItem._id)}
-                            className="p-2 text-grayText hover:text-red-400 hover:bg-red-900/20 rounded-lg transition-all duration-200"
+                            disabled={isLoading}
+                            className="p-2 text-grayText hover:text-red-400 hover:bg-red-900/20 disabled:opacity-50 rounded-lg transition-all duration-200"
                             title="Delete"
                           >
                             <svg

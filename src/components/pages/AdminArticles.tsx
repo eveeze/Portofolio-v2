@@ -1,37 +1,17 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { gsap } from "gsap";
 import AdminLayout from "../layouts/AdminLayout";
 import ArticleCard from "../fragments/admin/articles/ArticleCard";
-import ArticleModal from "../fragments/admin/articles/ArticleModal";
 import ArticleStats from "../fragments/admin/articles/ArticleStats";
 import CategoryModal from "../fragments/admin/articles/CategoryModal";
 import TagModal from "../fragments/admin/articles/TagModal";
 import SeriesModal from "../fragments/admin/articles/SeriesModal";
 import LoadingSkeleton from "../ui/LoadingSkeleton";
 import ConfirmationModal from "../ui/ConfirmationModal";
-
-interface ArticleFormData {
-  title: string;
-  slug: string;
-  excerpt: string;
-  content: string;
-  categoryId: string;
-  tags: string[];
-  metaDescription?: string;
-  featuredImage: File | null;
-  status: "draft" | "published" | "archived";
-  publishedAt?: number;
-  scheduledAt?: number;
-  readingTime: number;
-  techStack?: string[];
-  images: File[];
-  imagesToDelete?: string[];
-  seriesId?: string;
-  seriesPosition?: number;
-}
 
 interface ConvexArticle {
   _id: string;
@@ -95,25 +75,13 @@ interface ArticleCardData {
   _creationTime: number;
 }
 
-// TechStack interface to match expected type
-interface TechStack {
-  _id: string;
-  name: string;
-  category: string;
-  imageUrl?: string;
-  _creationTime: number;
-  position: number;
-  storageId: string;
-}
-
 const AdminArticles: React.FC = () => {
+  const navigate = useNavigate();
   const { token } = useAuth();
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   const [isSeriesModalOpen, setIsSeriesModalOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [editData, setEditData] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -138,7 +106,6 @@ const AdminArticles: React.FC = () => {
   const categories = useQuery(api.articles.getArticleCategories, {});
   const tags = useQuery(api.articles.getArticleTags, {});
   const series = useQuery(api.articles.getArticleSeries, {});
-  const rawTechStacks = useQuery(api.techStack.getTechStacks, {});
   const scheduledArticles = useQuery(api.articles.getScheduledArticles, {});
 
   // Get the Convex HTTP URL from environment variable
@@ -161,18 +128,6 @@ const AdminArticles: React.FC = () => {
     published: "Published",
     archived: "Archived",
   };
-
-  // Transform raw tech stacks to match expected type
-  const techStacks: TechStack[] =
-    rawTechStacks?.map((stack) => ({
-      _id: stack._id,
-      name: stack.name,
-      category: stack.category,
-      imageUrl: stack.imageUrl ?? undefined,
-      _creationTime: stack._creationTime,
-      position: stack.position,
-      storageId: stack.storageId,
-    })) || [];
 
   // Transform ConvexArticle to ArticleCardData
   const transformArticleForCard = (article: ConvexArticle): ArticleCardData => {
@@ -281,35 +236,14 @@ const AdminArticles: React.FC = () => {
     }
   }, []);
 
+  // Navigate to create article page
   const handleAddNew = () => {
-    setEditData(null);
-    setIsModalOpen(true);
+    navigate("/admin/articles/create");
   };
 
+  // Navigate to edit article page
   const handleEdit = (id: string) => {
-    const article = convexArticles?.find((a) => a._id === id);
-    if (article) {
-      setEditData({
-        id: article._id,
-        title: article.title,
-        slug: article.slug,
-        excerpt: article.excerpt,
-        content: article.content,
-        categoryId: article.categoryId,
-        tags: article.tags,
-        metaDescription: article.metaDescription,
-        featuredImageUrl: article.featuredImage,
-        status: article.status,
-        publishedAt: article.publishedAt,
-        scheduledAt: article.scheduledAt,
-        readingTime: article.readingTime,
-        techStack: article.techStack?.map((tech) => tech._id) || [],
-        images: article.images || [],
-        seriesId: article.series?._id,
-        seriesPosition: article.series?.position,
-      });
-      setIsModalOpen(true);
-    }
+    navigate(`/admin/articles/edit/${id}`);
   };
 
   const handleDelete = (id: string) => {
@@ -360,181 +294,6 @@ const AdminArticles: React.FC = () => {
     } catch (error: any) {
       console.error("Delete error:", error);
       alert(`Failed to delete: ${error.message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSave = async (formData: ArticleFormData) => {
-    if (!token) {
-      throw new Error("No authentication token available");
-    }
-
-    setIsLoading(true);
-    try {
-      const apiBaseUrl = getApiBaseUrl();
-
-      let featuredImageStorageId = null;
-      let imageStorageIds: string[] = [];
-
-      // Handle existing image deletions first (for edit mode)
-      if (
-        editData &&
-        formData.imagesToDelete &&
-        formData.imagesToDelete.length > 0
-      ) {
-        for (const imageId of formData.imagesToDelete) {
-          try {
-            await fetch(`${apiBaseUrl}/articles/images/${imageId}`, {
-              method: "DELETE",
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-            });
-          } catch (error) {
-            console.warn(`Error deleting image ${imageId}:`, error);
-          }
-        }
-      }
-
-      // Upload featured image if provided
-      if (formData.featuredImage) {
-        const uploadUrlResponse = await fetch(
-          `${apiBaseUrl}/articles/generateUploadUrl`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (!uploadUrlResponse.ok) {
-          throw new Error("Failed to get upload URL");
-        }
-
-        const uploadUrlData = await uploadUrlResponse.json();
-        const uploadResponse = await fetch(uploadUrlData.url, {
-          method: "POST",
-          body: formData.featuredImage,
-        });
-
-        if (!uploadResponse.ok) {
-          throw new Error("Failed to upload featured image");
-        }
-
-        const uploadResult = await uploadResponse.json();
-        featuredImageStorageId = uploadResult.storageId;
-      }
-
-      // Upload additional images
-      if (formData.images && formData.images.length > 0) {
-        for (const image of formData.images) {
-          const uploadUrlResponse = await fetch(
-            `${apiBaseUrl}/articles/generateUploadUrl`,
-            {
-              method: "GET",
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
-
-          if (!uploadUrlResponse.ok) {
-            throw new Error("Failed to get upload URL for image");
-          }
-
-          const uploadUrlData = await uploadUrlResponse.json();
-          const uploadResponse = await fetch(uploadUrlData.url, {
-            method: "POST",
-            body: image,
-          });
-
-          if (!uploadResponse.ok) {
-            throw new Error("Failed to upload image");
-          }
-
-          const uploadResult = await uploadResponse.json();
-          imageStorageIds.push(uploadResult.storageId);
-        }
-      }
-
-      const payload = {
-        title: formData.title,
-        slug: formData.slug,
-        excerpt: formData.excerpt,
-        content: formData.content,
-        categoryId: formData.categoryId,
-        tags: formData.tags,
-        metaDescription: formData.metaDescription,
-        status: formData.status,
-        publishedAt: formData.publishedAt,
-        scheduledAt: formData.scheduledAt,
-        readingTime: formData.readingTime,
-        techStack: formData.techStack,
-        ...(featuredImageStorageId && { featuredImageStorageId }),
-        ...(imageStorageIds.length > 0 && { imageStorageIds }),
-      };
-
-      let response;
-      if (editData) {
-        // Update existing article
-        response = await fetch(`${apiBaseUrl}/articles/${editData.id}`, {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        });
-      } else {
-        // Create new article
-        response = await fetch(`${apiBaseUrl}/articles`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        });
-      }
-
-      if (!response.ok) {
-        const errorData = await response
-          .json()
-          .catch(() => ({ error: "Unknown error" }));
-        throw new Error(
-          errorData.error || `Failed to save: ${response.status}`
-        );
-      }
-
-      const result = await response.json();
-
-      // Handle series assignment if needed
-      if (formData.seriesId && formData.seriesPosition !== undefined) {
-        const articleId = editData?.id || result.articleId;
-        await fetch(`${apiBaseUrl}/articles/series-articles`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            seriesId: formData.seriesId,
-            articleId,
-            position: formData.seriesPosition,
-          }),
-        });
-      }
-
-      setIsModalOpen(false);
-      setEditData(null);
-    } catch (error: any) {
-      console.error("Save error:", error);
-      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -831,20 +590,6 @@ const AdminArticles: React.FC = () => {
         </div>
 
         {/* Modals */}
-        <ArticleModal
-          isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false);
-            setEditData(null);
-          }}
-          onSave={handleSave}
-          editData={editData}
-          categories={categories || []}
-          tags={tags || []}
-          series={series || []}
-          techStacks={techStacks}
-        />
-
         <CategoryModal
           isOpen={isCategoryModalOpen}
           onClose={() => setIsCategoryModalOpen(false)}
