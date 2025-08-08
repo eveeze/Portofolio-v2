@@ -24,7 +24,19 @@ export default defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_credentialID", ["credentialID"]),
-
+  analytics: defineTable({
+    type: v.string(), // "visitor", "page_view", "portfolio_view", "contact_form"
+    page: v.optional(v.string()), // URL path
+    userAgent: v.optional(v.string()),
+    referrer: v.optional(v.string()),
+    ipHash: v.optional(v.string()), // Hashed IP for privacy
+    sessionId: v.optional(v.string()),
+    additionalData: v.optional(v.any()), // JSON data for additional context
+    timestamp: v.number(), // Unix timestamp
+  })
+    .index("by_type", ["type"])
+    .index("by_session", ["sessionId"])
+    .index("by_page", ["page"]),
   techStacks: defineTable({
     name: v.string(),
     category: v.string(),

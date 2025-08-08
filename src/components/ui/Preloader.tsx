@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
 import { gsap } from "gsap";
 
 interface PreloaderProps {
@@ -7,8 +6,8 @@ interface PreloaderProps {
 }
 
 const Preloader: React.FC<PreloaderProps> = ({ children }) => {
+  // Always show preloader on initial page load/refresh
   const [isLoading, setIsLoading] = useState(true);
-  const location = useLocation();
 
   // Refs for animation elements
   const preloaderRef = useRef<HTMLDivElement>(null);
@@ -16,59 +15,40 @@ const Preloader: React.FC<PreloaderProps> = ({ children }) => {
   const eveezeRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const textContainerRef = useRef<HTMLDivElement>(null);
-
-  // Check if current route is admin route
-  const isAdminRoute = location.pathname.startsWith("/admin");
 
   useEffect(() => {
-    // Don't show preloader on admin routes
-    if (isAdminRoute) {
-      setIsLoading(false);
-      return;
-    }
-
-    // Reset loading state when route changes (for non-admin routes)
-    setIsLoading(true);
-
-    // Start animation sequence
+    // Optimized animation sequence
     const animatePreloader = () => {
       const tl = gsap.timeline();
 
-      // Split text into individual characters for stagger animation
-      const titoChars = titoRef.current?.children;
-      const eveezeChars = eveezeRef.current?.children;
+      // Get character elements
+      const titoChars = titoRef.current?.children || [];
+      const eveezeChars = eveezeRef.current?.children || [];
 
-      // Ensure container is visible first
+      // Set initial states in batch for better performance
       gsap.set(containerRef.current, { opacity: 1 });
+      gsap.set([titoRef.current, eveezeRef.current], { opacity: 1 });
 
-      // Set initial state for text containers (visible but positioned)
-      gsap.set([titoRef.current, eveezeRef.current], {
-        opacity: 1,
+      // Set character initial states
+      gsap.set([...titoChars, ...eveezeChars], {
+        opacity: 0,
+        y: 100,
+        rotationX: -90,
+        transformOrigin: "center bottom",
       });
 
-      // Set initial state for characters
-      if (titoChars && eveezeChars) {
-        gsap.set([...titoChars, ...eveezeChars], {
-          opacity: 0,
-          y: 100,
-          rotationX: -90,
-          transformOrigin: "center bottom",
-        });
-      }
-
-      // Set initial state for profile image
+      // Set profile initial state
       gsap.set(profileRef.current, {
         opacity: 0,
         scale: 0.3,
         y: 30,
       });
 
-      // Animation sequence
+      // Optimized animation sequence
       tl
-        // Phase 1: Animate TITO characters with stagger from bottom
+        // Phase 1: Animate TITO characters
         .to(
-          [...Array.from(titoChars || [])],
+          Array.from(titoChars),
           {
             opacity: 1,
             y: 0,
@@ -80,9 +60,9 @@ const Preloader: React.FC<PreloaderProps> = ({ children }) => {
           0.3
         )
 
-        // Phase 2: Animate EVEEZE characters with stagger from bottom
+        // Phase 2: Animate EVEEZE characters
         .to(
-          [...Array.from(eveezeChars || [])],
+          Array.from(eveezeChars),
           {
             opacity: 1,
             y: 0,
@@ -94,26 +74,26 @@ const Preloader: React.FC<PreloaderProps> = ({ children }) => {
           0.6
         )
 
-        // Phase 3: Brief pause to let text settle
+        // Phase 3: Brief pause
         .to({}, { duration: 0.8 })
 
-        // Phase 4: Separate the texts horizontally to make space for profile image
+        // Phase 4: Separate texts horizontally (parallel animation)
         .to(titoRef.current, {
-          x: -250, // Increased distance for better symmetry
+          x: -250,
           duration: 0.8,
           ease: "power2.out",
         })
         .to(
           eveezeRef.current,
           {
-            x: 300, // Increased distance for better symmetry
+            x: 300,
             duration: 0.8,
             ease: "power2.out",
           },
-          "<" // Start at the same time as TITO animation
+          "<"
         )
 
-        // Phase 5: Show profile image from center with scale and fade
+        // Phase 5: Show profile image
         .to(
           profileRef.current,
           {
@@ -126,19 +106,16 @@ const Preloader: React.FC<PreloaderProps> = ({ children }) => {
           "-=0.4"
         )
 
-        // Phase 6: Hold the final state briefly
+        // Phase 6: Hold final state
         .to({}, { duration: 1 })
 
-        // Phase 7: Exit animation - slide elements out sequentially from left to up
-        // First move TITO text up and out
+        // Phase 7: Exit animation sequence
         .to(titoRef.current, {
           y: "-100vh",
           opacity: 0,
           duration: 0.8,
           ease: "power2.inOut",
         })
-
-        // Then move profile image up and out
         .to(
           profileRef.current,
           {
@@ -149,8 +126,6 @@ const Preloader: React.FC<PreloaderProps> = ({ children }) => {
           },
           "-=0.4"
         )
-
-        // Finally move EVEEZE text up and out
         .to(
           eveezeRef.current,
           {
@@ -162,7 +137,7 @@ const Preloader: React.FC<PreloaderProps> = ({ children }) => {
           "-=0.4"
         )
 
-        // Hide the entire container
+        // Hide container
         .to(containerRef.current, {
           opacity: 0,
           duration: 0.3,
@@ -174,13 +149,13 @@ const Preloader: React.FC<PreloaderProps> = ({ children }) => {
         });
     };
 
-    // Start animation after DOM is ready
-    const timeout = setTimeout(animatePreloader, 150);
+    // Start animation with minimal delay
+    const timeout = setTimeout(animatePreloader, 100);
     return () => clearTimeout(timeout);
-  }, [location.pathname, isAdminRoute]);
+  }, []); // Remove isLoading dependency since we always want to run this on mount
 
-  // Don't render preloader for admin routes
-  if (isAdminRoute || !isLoading) {
+  // Don't render preloader if not loading
+  if (!isLoading) {
     return <>{children}</>;
   }
 
@@ -191,47 +166,45 @@ const Preloader: React.FC<PreloaderProps> = ({ children }) => {
         ref={preloaderRef}
         className="fixed inset-0 z-[9999] bg-black flex items-center justify-center overflow-hidden"
       >
-        <div ref={containerRef} className="flex items-center justify-center">
-          {/* Text Container - untuk positioning awal */}
+        <div
+          ref={containerRef}
+          className="flex items-center justify-center opacity-0"
+        >
+          {/* TITO Text - Left side */}
           <div
-            ref={textContainerRef}
-            className="flex items-center justify-center gap-4"
+            ref={titoRef}
+            className="text-2xl md:text-4xl font-centsbook text-white tracking-wider select-none opacity-0"
           >
-            {/* TITO Text - Left side */}
-            <div
-              ref={titoRef}
-              className="text-2xl md:text-4xl font-centsbook text-white tracking-wider select-none"
-            >
-              <span className="inline-block">T</span>
-              <span className="inline-block">I</span>
-              <span className="inline-block">T</span>
-              <span className="inline-block">O</span>
-            </div>
-
-            {/* EVEEZE Text - Right side */}
-            <div
-              ref={eveezeRef}
-              className="text-2xl md:text-4xl font-centsbook text-white tracking-wider select-none"
-            >
-              <span className="inline-block">E</span>
-              <span className="inline-block">V</span>
-              <span className="inline-block">E</span>
-              <span className="inline-block">E</span>
-              <span className="inline-block">Z</span>
-              <span className="inline-block">E</span>
-            </div>
+            <span className="inline-block">T</span>
+            <span className="inline-block">I</span>
+            <span className="inline-block">T</span>
+            <span className="inline-block">O</span>
           </div>
 
-          {/* Profile Picture - Center, bigger size */}
+          {/* EVEEZE Text - Right side */}
+          <div
+            ref={eveezeRef}
+            className="text-2xl md:text-4xl font-centsbook text-white tracking-wider select-none opacity-0 ml-4"
+          >
+            <span className="inline-block">E</span>
+            <span className="inline-block">V</span>
+            <span className="inline-block">E</span>
+            <span className="inline-block">E</span>
+            <span className="inline-block">Z</span>
+            <span className="inline-block">E</span>
+          </div>
+
+          {/* Profile Picture - Center */}
           <div
             ref={profileRef}
-            className="w-56 h-56 md:w-72 md:h-72 overflow-hidden shadow-xl rounded-lg absolute"
+            className="w-56 h-56 md:w-72 md:h-72 overflow-hidden shadow-xl absolute opacity-0"
           >
             <img
               src="/images/pp.jpg"
               alt="Profile"
               className="w-full h-full object-cover"
               loading="eager"
+              decoding="async"
             />
           </div>
         </div>

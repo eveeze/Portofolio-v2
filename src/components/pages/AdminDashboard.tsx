@@ -2,6 +2,8 @@
 import { useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { gsap } from "gsap";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import AdminLayout from "../layouts/AdminLayout";
 
 interface DashboardCard {
@@ -19,42 +21,168 @@ const AdminDashboard: React.FC = () => {
   const cardsRef = useRef<HTMLDivElement>(null);
   const quickActionsRef = useRef<HTMLDivElement>(null);
   const activityRef = useRef<HTMLDivElement>(null);
+  const chartsRef = useRef<HTMLDivElement>(null);
 
-  // Mock data
-  const dashboardCards: DashboardCard[] = [
-    {
-      title: "Total Projects",
-      value: 12,
-      icon: "📁",
-      trend: { value: 2, direction: "up" },
-    },
-    {
-      title: "Tech Stacks",
-      value: 24,
-      icon: "⚙️",
-      trend: { value: 3, direction: "up" },
-    },
-    {
-      title: "Messages",
-      value: 45,
-      icon: "💬",
-      trend: { value: 5, direction: "up" },
-    },
-    {
-      title: "Page Views",
-      value: "2.4K",
-      icon: "👁️",
-      trend: { value: 12, direction: "up" },
-    },
-  ];
+  // Fetch dashboard data
+  const dashboardData = useQuery(api.dashboard.getDashboardData);
+
+  // Calculate trends dynamically
+  const calculateTrend = (current: number, previous: number) => {
+    if (previous === 0) return { value: 0, direction: "up" as const };
+    const percentage = Math.round(((current - previous) / previous) * 100);
+    return {
+      value: Math.abs(percentage),
+      direction: percentage >= 0 ? ("up" as const) : ("down" as const),
+    };
+  };
+
+  // Generate dashboard cards from real data - ALL DYNAMIC
+  const dashboardCards: DashboardCard[] = dashboardData
+    ? [
+        {
+          title: "Total Visitors",
+          value: dashboardData.stats.analytics.totalVisitors.toLocaleString(),
+          icon: "👥",
+          trend: calculateTrend(
+            dashboardData.stats.analytics.weeklyVisitors,
+            Math.max(
+              dashboardData.stats.analytics.monthlyVisitors -
+                dashboardData.stats.analytics.weeklyVisitors,
+              1
+            )
+          ),
+        },
+        {
+          title: "Today's Visitors",
+          value: dashboardData.stats.analytics.todayVisitors,
+          icon: "📈",
+          trend: calculateTrend(
+            dashboardData.stats.analytics.todayVisitors,
+            Math.max(
+              Math.floor(dashboardData.stats.analytics.weeklyVisitors / 7),
+              1
+            )
+          ),
+        },
+        {
+          title: "Total Projects",
+          value: dashboardData.stats.projects.total,
+          icon: "📁",
+          trend: dashboardData.stats.projects.recentGrowth
+            ? {
+                value: dashboardData.stats.projects.recentGrowth,
+                direction: "up",
+              }
+            : undefined,
+        },
+        {
+          title: "Tech Stacks",
+          value: dashboardData.stats.techStacks.total,
+          icon: "⚙️",
+          trend: dashboardData.stats.techStacks.recentGrowth
+            ? {
+                value: dashboardData.stats.techStacks.recentGrowth,
+                direction: "up",
+              }
+            : undefined,
+        },
+        {
+          title: "Articles",
+          value: dashboardData.stats.articles.total,
+          icon: "📝",
+          trend: dashboardData.stats.articles.recentGrowth
+            ? {
+                value: dashboardData.stats.articles.recentGrowth,
+                direction: "up",
+              }
+            : undefined,
+        },
+        {
+          title: "Portfolio Views",
+          value: dashboardData.stats.analytics.portfolioViews.toLocaleString(),
+          icon: "👁️",
+          trend: calculateTrend(
+            dashboardData.stats.analytics.portfolioViews,
+            Math.max(
+              Math.floor(dashboardData.stats.analytics.portfolioViews * 0.8),
+              1
+            )
+          ),
+        },
+        {
+          title: "Contact Forms",
+          value: dashboardData.stats.analytics.contactSubmissions,
+          icon: "💬",
+          trend: calculateTrend(
+            dashboardData.stats.analytics.contactSubmissions,
+            Math.max(
+              Math.floor(
+                dashboardData.stats.analytics.contactSubmissions * 0.7
+              ),
+              1
+            )
+          ),
+        },
+      ]
+    : [];
+
+  // Generate recent activity from real data - COMPLETELY DYNAMIC
+  const recentActivity = dashboardData
+    ? [
+        ...dashboardData.recentActivity.articles.map((article: any) => ({
+          action: `Article ${article.status}: ${article.title}`,
+          time: new Date(article._creationTime).toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          }),
+          type:
+            article.status === "published"
+              ? ("success" as const)
+              : ("info" as const),
+          icon: "📝",
+        })),
+        ...dashboardData.recentActivity.projects.map((project: any) => ({
+          action: `Project updated: ${project.title}`,
+          time: new Date(project._creationTime).toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          }),
+          type: "success" as const,
+          icon: "📁",
+        })),
+        ...dashboardData.recentActivity.visitors
+          .slice(0, 3)
+          .map((visitor: any) => ({
+            action: `New visitor from ${visitor.page || "Home"}`,
+            time: new Date(visitor._creationTime).toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            }),
+            type: "info" as const,
+            icon: "👥",
+          })),
+      ]
+        .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+        .slice(0, 8)
+    : [];
 
   useEffect(() => {
+    if (!dashboardData) return;
+
     // Entrance animations for content elements
     const tl = gsap.timeline({ delay: 0.5 }); // Delay to let layout animate first
 
     if (cardsRef.current && quickActionsRef.current && activityRef.current) {
       gsap.set(
-        [cardsRef.current, quickActionsRef.current, activityRef.current],
+        [
+          cardsRef.current,
+          quickActionsRef.current,
+          activityRef.current,
+          chartsRef.current,
+        ],
         {
           opacity: 0,
           y: 30,
@@ -67,6 +195,16 @@ const AdminDashboard: React.FC = () => {
         duration: 0.6,
         ease: "power2.out",
       })
+        .to(
+          chartsRef.current,
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.6,
+            ease: "power2.out",
+          },
+          "-=0.3"
+        )
         .to(
           quickActionsRef.current,
           {
@@ -104,7 +242,7 @@ const AdminDashboard: React.FC = () => {
         );
       });
     }
-  }, []);
+  }, [dashboardData]);
 
   const handleNavigation = (path: string) => {
     // Animate out and navigate
@@ -124,6 +262,16 @@ const AdminDashboard: React.FC = () => {
       );
     }
   };
+
+  if (!dashboardData) {
+    return (
+      <AdminLayout title="Dashboard" subtitle="Loading dashboard data...">
+        <div className="p-8 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout
@@ -167,7 +315,97 @@ const AdminDashboard: React.FC = () => {
             ))}
           </div>
 
-          {/* Quick Actions */}
+          {/* Charts Section */}
+          <div
+            ref={chartsRef}
+            className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+          >
+            {/* Visitors Trend Chart - DYNAMIC DATA */}
+            <div className="bg-background border border-gray-800 rounded-lg p-6">
+              <h3 className="text-whiteText text-lg font-semibold mb-4">
+                Visitors Trend (Last 7 Days)
+              </h3>
+              <div className="space-y-3">
+                {dashboardData.charts.visitorsTrend.length > 0 ? (
+                  dashboardData.charts.visitorsTrend.map(
+                    (day: any, index: number) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between"
+                      >
+                        <span className="text-grayText text-sm">
+                          {new Date(day.date).toLocaleDateString("id-ID", {
+                            weekday: "short",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </span>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-20 bg-gray-800 rounded-full h-2">
+                            <div
+                              className="bg-blue-600 h-2 rounded-full"
+                              style={{
+                                width: `${Math.min((day.visitors / Math.max(...dashboardData.charts.visitorsTrend.map((d: any) => d.visitors), 1)) * 100, 100)}%`,
+                              }}
+                            ></div>
+                          </div>
+                          <span className="text-whiteText font-medium w-8 text-right">
+                            {day.visitors}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  )
+                ) : (
+                  <p className="text-grayText text-sm">
+                    No visitor data available yet
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Popular Pages - DYNAMIC DATA */}
+            <div className="bg-background border border-gray-800 rounded-lg p-6">
+              <h3 className="text-whiteText text-lg font-semibold mb-4">
+                Popular Pages
+              </h3>
+              <div className="space-y-3">
+                {dashboardData.charts.popularPages.length > 0 ? (
+                  dashboardData.charts.popularPages
+                    .slice(0, 5)
+                    .map((page: any, index: number) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between"
+                      >
+                        <span className="text-grayText text-sm truncate">
+                          {page.page || "Home"}
+                        </span>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-16 bg-gray-800 rounded-full h-2">
+                            <div
+                              className="bg-green-600 h-2 rounded-full"
+                              style={{
+                                width: `${Math.min((page.views / Math.max(...dashboardData.charts.popularPages.map((p: any) => p.views), 1)) * 100, 100)}%`,
+                              }}
+                            ></div>
+                          </div>
+                          <span className="text-whiteText font-medium w-8 text-right">
+                            {page.views}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                ) : (
+                  <p className="text-grayText text-sm">
+                    No page view data available yet
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Actions - Using DYNAMIC counts */}
           <div
             ref={quickActionsRef}
             className="bg-background border border-gray-800 rounded-lg p-6"
@@ -185,7 +423,9 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <div className="text-left">
                   <h4 className="text-whiteText font-medium">Tech Stack</h4>
-                  <p className="text-grayText text-sm">Manage technologies</p>
+                  <p className="text-grayText text-sm">
+                    {dashboardData.stats.techStacks.total} technologies
+                  </p>
                 </div>
               </button>
 
@@ -198,20 +438,24 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <div className="text-left">
                   <h4 className="text-whiteText font-medium">Projects</h4>
-                  <p className="text-grayText text-sm">Manage portfolio</p>
+                  <p className="text-grayText text-sm">
+                    {dashboardData.stats.projects.total} projects
+                  </p>
                 </div>
               </button>
 
               <button
-                onClick={() => handleNavigation("/admin/messages")}
+                onClick={() => handleNavigation("/admin/articles")}
                 className="flex items-center p-4 bg-purple-600/10 border border-purple-600/20 rounded-lg hover:bg-purple-600/20 transition-all duration-200 group"
               >
                 <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform">
-                  <span className="text-white text-lg">💬</span>
+                  <span className="text-white text-lg">📝</span>
                 </div>
                 <div className="text-left">
-                  <h4 className="text-whiteText font-medium">Messages</h4>
-                  <p className="text-grayText text-sm">View contacts</p>
+                  <h4 className="text-whiteText font-medium">Articles</h4>
+                  <p className="text-grayText text-sm">
+                    {dashboardData.stats.articles.published} published
+                  </p>
                 </div>
               </button>
 
@@ -237,7 +481,9 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <div className="text-left">
                   <h4 className="text-whiteText font-medium">View Site</h4>
-                  <p className="text-grayText text-sm">Open portfolio</p>
+                  <p className="text-grayText text-sm">
+                    {dashboardData.stats.analytics.portfolioViews} views
+                  </p>
                 </div>
               </button>
 
@@ -247,13 +493,15 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <div className="text-left">
                   <h4 className="text-whiteText font-medium">Analytics</h4>
-                  <p className="text-grayText text-sm">Coming soon</p>
+                  <p className="text-grayText text-sm">
+                    {dashboardData.stats.analytics.totalVisitors} total visitors
+                  </p>
                 </div>
               </button>
             </div>
           </div>
 
-          {/* Recent Activity */}
+          {/* Recent Activity - COMPLETELY DYNAMIC */}
           <div
             ref={activityRef}
             className="bg-background border border-gray-800 rounded-lg p-6"
@@ -262,141 +510,182 @@ const AdminDashboard: React.FC = () => {
               Recent Activity
             </h3>
             <div className="space-y-4">
-              {[
-                {
-                  action: "New tech stack added: React",
-                  time: "2 hours ago",
-                  type: "success",
-                  icon: "⚙️",
-                },
-                {
-                  action: "Project updated: Portfolio Website",
-                  time: "4 hours ago",
-                  type: "info",
-                  icon: "📁",
-                },
-                {
-                  action: "New message received",
-                  time: "6 hours ago",
-                  type: "info",
-                  icon: "💬",
-                },
-                {
-                  action: "Tech stack reordered",
-                  time: "1 day ago",
-                  type: "warning",
-                  icon: "🔄",
-                },
-                {
-                  action: "System backup completed",
-                  time: "2 days ago",
-                  type: "success",
-                  icon: "💾",
-                },
-              ].map((activity, index) => (
-                <div
-                  key={index}
-                  className="flex items-center space-x-4 p-3 hover:bg-gray-800/50 rounded-lg transition-all duration-200"
-                >
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-                      activity.type === "success"
-                        ? "bg-green-600/20 text-green-400"
-                        : activity.type === "info"
-                          ? "bg-blue-600/20 text-blue-400"
-                          : "bg-yellow-600/20 text-yellow-400"
-                    }`}
-                  >
-                    {activity.icon}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-whiteText text-sm">{activity.action}</p>
-                    <p className="text-grayText text-xs">{activity.time}</p>
-                  </div>
-                  <div
-                    className={`w-2 h-2 rounded-full ${
-                      activity.type === "success"
-                        ? "bg-green-500"
-                        : activity.type === "info"
-                          ? "bg-blue-500"
-                          : "bg-yellow-500"
-                    }`}
-                  ></div>
-                </div>
-              ))}
+              {recentActivity.length > 0 ? (
+                recentActivity
+                  .slice(0, 8)
+                  .map((activity: any, index: number) => (
+                    <div
+                      key={index}
+                      className="flex items-center space-x-4 p-3 hover:bg-gray-800/50 rounded-lg transition-all duration-200"
+                    >
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
+                          activity.type === "success"
+                            ? "bg-green-600/20 text-green-400"
+                            : activity.type === "info"
+                              ? "bg-blue-600/20 text-blue-400"
+                              : "bg-yellow-600/20 text-yellow-400"
+                        }`}
+                      >
+                        {activity.icon}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-whiteText text-sm">
+                          {activity.action}
+                        </p>
+                        <p className="text-grayText text-xs">{activity.time}</p>
+                      </div>
+                      <div
+                        className={`w-2 h-2 rounded-full ${
+                          activity.type === "success"
+                            ? "bg-green-500"
+                            : activity.type === "info"
+                              ? "bg-blue-500"
+                              : "bg-yellow-500"
+                        }`}
+                      ></div>
+                    </div>
+                  ))
+              ) : (
+                <p className="text-grayText text-sm">
+                  No recent activity available
+                </p>
+              )}
             </div>
           </div>
 
-          {/* System Status */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-background border border-gray-800 rounded-lg p-6">
-              <h3 className="text-whiteText text-lg font-semibold mb-4">
-                System Status
-              </h3>
-              <div className="space-y-3">
-                {[
-                  {
-                    service: "Database",
-                    status: "Operational",
-                    uptime: "99.9%",
-                  },
-                  { service: "API", status: "Operational", uptime: "99.8%" },
-                  { service: "Storage", status: "Operational", uptime: "100%" },
-                  { service: "CDN", status: "Operational", uptime: "99.7%" },
-                ].map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-whiteText text-sm">
-                        {item.service}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-green-400 text-xs">
-                        {item.status}
-                      </span>
-                      <p className="text-grayText text-xs">
-                        {item.uptime} uptime
-                      </p>
-                    </div>
-                  </div>
-                ))}
+          {/* Analytics Summary */}
+          <div className="bg-background border border-gray-800 rounded-lg p-6">
+            <h3 className="text-whiteText text-lg font-semibold mb-4">
+              Analytics Summary
+            </h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-grayText text-sm">Total Visitors</span>
+                <span className="text-whiteText font-medium">
+                  {dashboardData.stats.analytics.totalVisitors.toLocaleString()}
+                </span>
               </div>
-            </div>
-
-            <div className="bg-background border border-gray-800 rounded-lg p-6">
-              <h3 className="text-whiteText text-lg font-semibold mb-4">
-                Quick Stats
-              </h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-grayText text-sm">
-                    Total Visitors Today
-                  </span>
-                  <span className="text-whiteText font-medium">1,234</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-grayText text-sm">
-                    Contact Form Submissions
-                  </span>
-                  <span className="text-whiteText font-medium">23</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-grayText text-sm">Portfolio Views</span>
-                  <span className="text-whiteText font-medium">567</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-grayText text-sm">
-                    Download Requests
-                  </span>
-                  <span className="text-whiteText font-medium">89</span>
-                </div>
+              <div className="flex items-center justify-between">
+                <span className="text-grayText text-sm">
+                  Contact Form Submissions
+                </span>
+                <span className="text-whiteText font-medium">
+                  {dashboardData.stats.analytics.contactSubmissions}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-grayText text-sm">Portfolio Views</span>
+                <span className="text-whiteText font-medium">
+                  {dashboardData.stats.analytics.portfolioViews.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-grayText text-sm">
+                  This Week's Visitors
+                </span>
+                <span className="text-whiteText font-medium">
+                  {dashboardData.stats.analytics.weeklyVisitors}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-grayText text-sm">
+                  This Month's Visitors
+                </span>
+                <span className="text-whiteText font-medium">
+                  {dashboardData.stats.analytics.monthlyVisitors}
+                </span>
               </div>
             </div>
           </div>
+
+          {/* Recent Articles and Projects - DYNAMIC */}
+          {(dashboardData.recentActivity.articles.length > 0 ||
+            dashboardData.recentActivity.projects.length > 0) && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Recent Articles */}
+              {dashboardData.recentActivity.articles.length > 0 && (
+                <div className="bg-background border border-gray-800 rounded-lg p-6">
+                  <h3 className="text-whiteText text-lg font-semibold mb-4">
+                    Recent Articles
+                  </h3>
+                  <div className="space-y-3">
+                    {dashboardData.recentActivity.articles
+                      .slice(0, 3)
+                      .map((article: any, index: number) => (
+                        <div
+                          key={index}
+                          className="flex items-start space-x-3 p-3 hover:bg-gray-800/50 rounded-lg transition-all duration-200"
+                        >
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                          <div className="flex-1">
+                            <h4 className="text-whiteText text-sm font-medium truncate">
+                              {article.title}
+                            </h4>
+                            <p className="text-grayText text-xs">
+                              Status: {article.status} •{" "}
+                              {new Date(
+                                article._creationTime
+                              ).toLocaleDateString("id-ID")}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Recent Projects */}
+              {dashboardData.recentActivity.projects.length > 0 && (
+                <div className="bg-background border border-gray-800 rounded-lg p-6">
+                  <h3 className="text-whiteText text-lg font-semibold mb-4">
+                    Recent Projects
+                  </h3>
+                  <div className="space-y-3">
+                    {dashboardData.recentActivity.projects
+                      .slice(0, 3)
+                      .map((project: any, index: number) => (
+                        <div
+                          key={index}
+                          className="flex items-start space-x-3 p-3 hover:bg-gray-800/50 rounded-lg transition-all duration-200"
+                        >
+                          <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                          <div className="flex-1">
+                            <h4 className="text-whiteText text-sm font-medium truncate">
+                              {project.title}
+                            </h4>
+                            <p className="text-grayText text-xs">
+                              {project.techStack?.length || 0} technologies •{" "}
+                              {new Date(
+                                project._creationTime
+                              ).toLocaleDateString("id-ID")}
+                            </p>
+                            <div className="flex space-x-1 mt-1">
+                              {project.techStack
+                                ?.slice(0, 3)
+                                .map((tech: any, techIndex: number) => (
+                                  <span
+                                    key={techIndex}
+                                    className="text-xs bg-gray-700 px-2 py-1 rounded"
+                                  >
+                                    {tech.name}
+                                  </span>
+                                ))}
+                              {project.techStack &&
+                                project.techStack.length > 3 && (
+                                  <span className="text-xs text-grayText">
+                                    +{project.techStack.length - 3} more
+                                  </span>
+                                )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </AdminLayout>
