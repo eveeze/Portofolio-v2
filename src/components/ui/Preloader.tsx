@@ -6,7 +6,6 @@ interface PreloaderProps {
 }
 
 const Preloader: React.FC<PreloaderProps> = ({ children }) => {
-  // Always show preloader on initial page load/refresh
   const [isLoading, setIsLoading] = useState(true);
 
   // Refs for animation elements
@@ -16,7 +15,82 @@ const Preloader: React.FC<PreloaderProps> = ({ children }) => {
   const profileRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Store original scroll position and body styles
+  const originalScrollPosition = useRef<number>(0);
+  const originalBodyStyles = useRef<{
+    overflow: string;
+    height: string;
+    position: string;
+    top: string;
+    left: string;
+    width: string;
+  }>({
+    overflow: "",
+    height: "",
+    position: "",
+    top: "",
+    left: "",
+    width: "",
+  });
+
   useEffect(() => {
+    // Store original body styles
+    originalBodyStyles.current = {
+      overflow: document.body.style.overflow || "",
+      height: document.body.style.height || "",
+      position: document.body.style.position || "",
+      top: document.body.style.top || "",
+      left: document.body.style.left || "",
+      width: document.body.style.width || "",
+    };
+
+    // Store original scroll position
+    originalScrollPosition.current =
+      window.scrollY || document.documentElement.scrollTop;
+
+    // Force scroll to top immediately and aggressively
+    const scrollToTop = () => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      // Force a reflow to ensure scroll position is applied
+      document.body.offsetHeight;
+    };
+
+    // Execute multiple times to ensure it works
+    scrollToTop();
+    requestAnimationFrame(scrollToTop);
+    setTimeout(scrollToTop, 0);
+
+    // Prevent scrolling during preloader with more aggressive approach
+    const preventScroll = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    };
+
+    // Apply body styles to lock scroll and position
+    document.body.style.overflow = "hidden";
+    document.body.style.height = "100vh";
+    document.body.style.position = "fixed";
+    document.body.style.top = "0";
+    document.body.style.left = "0";
+    document.body.style.width = "100%";
+
+    // Add event listeners to prevent any scrolling
+    document.addEventListener("scroll", preventScroll, { passive: false });
+    document.addEventListener("wheel", preventScroll, { passive: false });
+    document.addEventListener("touchmove", preventScroll, { passive: false });
+    document.addEventListener("keydown", (e) => {
+      // Prevent arrow keys, space, page up/down from scrolling
+      if ([32, 33, 34, 35, 36, 37, 38, 39, 40].includes(e.keyCode)) {
+        e.preventDefault();
+      }
+    });
+
+    // Force scroll to top one more time after DOM manipulation
+    setTimeout(scrollToTop, 10);
+
     // Optimized animation sequence
     const animatePreloader = () => {
       const tl = gsap.timeline();
@@ -145,14 +219,50 @@ const Preloader: React.FC<PreloaderProps> = ({ children }) => {
 
         // Complete loading
         .call(() => {
-          setIsLoading(false);
+          // Remove scroll prevention event listeners
+          document.removeEventListener("scroll", preventScroll);
+          document.removeEventListener("wheel", preventScroll);
+          document.removeEventListener("touchmove", preventScroll);
+
+          // Restore original body styles
+          document.body.style.overflow = originalBodyStyles.current.overflow;
+          document.body.style.height = originalBodyStyles.current.height;
+          document.body.style.position = originalBodyStyles.current.position;
+          document.body.style.top = originalBodyStyles.current.top;
+          document.body.style.left = originalBodyStyles.current.left;
+          document.body.style.width = originalBodyStyles.current.width;
+
+          // Ensure we're still at the top after restoring styles
+          requestAnimationFrame(() => {
+            window.scrollTo(0, 0);
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+
+            // Set loading to false after ensuring scroll position
+            setIsLoading(false);
+          });
         });
     };
 
     // Start animation with minimal delay
     const timeout = setTimeout(animatePreloader, 100);
-    return () => clearTimeout(timeout);
-  }, []); // Remove isLoading dependency since we always want to run this on mount
+
+    return () => {
+      clearTimeout(timeout);
+
+      // Cleanup: remove event listeners and restore body styles
+      document.removeEventListener("scroll", preventScroll);
+      document.removeEventListener("wheel", preventScroll);
+      document.removeEventListener("touchmove", preventScroll);
+
+      document.body.style.overflow = originalBodyStyles.current.overflow;
+      document.body.style.height = originalBodyStyles.current.height;
+      document.body.style.position = originalBodyStyles.current.position;
+      document.body.style.top = originalBodyStyles.current.top;
+      document.body.style.left = originalBodyStyles.current.left;
+      document.body.style.width = originalBodyStyles.current.width;
+    };
+  }, []);
 
   // Don't render preloader if not loading
   if (!isLoading) {
@@ -161,14 +271,31 @@ const Preloader: React.FC<PreloaderProps> = ({ children }) => {
 
   return (
     <>
-      {/* Preloader */}
+      {/* Preloader - Always fixed and covering full viewport */}
       <div
         ref={preloaderRef}
         className="fixed inset-0 z-[9999] bg-black flex items-center justify-center overflow-hidden"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: "100vw",
+          height: "100vh",
+          margin: 0,
+          padding: 0,
+        }}
       >
         <div
           ref={containerRef}
           className="flex items-center justify-center opacity-0"
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+          }}
         >
           {/* TITO Text - Left side */}
           <div
@@ -210,13 +337,16 @@ const Preloader: React.FC<PreloaderProps> = ({ children }) => {
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main Content - Hidden during loading */}
       <div
         className={
           isLoading
             ? "opacity-0 pointer-events-none"
             : "opacity-100 transition-opacity duration-700 ease-out"
         }
+        style={{
+          visibility: isLoading ? "hidden" : "visible",
+        }}
       >
         {children}
       </div>

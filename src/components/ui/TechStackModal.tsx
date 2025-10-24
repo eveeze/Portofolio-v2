@@ -177,10 +177,22 @@ const TechStackModal: React.FC<TechStackModalProps> = ({
   const validateForm = (): boolean => {
     const newErrors: TechStackFormErrors = {};
 
-    if (!formData.name.trim()) {
+    // FIXED: Better name validation that properly handles spaces and multi-word names
+    const trimmedName = formData.name.trim();
+
+    if (!trimmedName) {
       newErrors.name = "Name is required";
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = "Name must be at least 2 characters";
+    } else if (trimmedName.length < 1) {
+      // Changed from 2 to 1 to be more permissive
+      newErrors.name = "Name cannot be empty";
+    } else if (trimmedName.length > 50) {
+      newErrors.name = "Name must be less than 50 characters";
+    } else if (/^\s+|\s+$/.test(formData.name)) {
+      // Check for leading/trailing spaces but don't block internal spaces
+      newErrors.name = "Name cannot start or end with spaces";
+    } else if (/\s{2,}/.test(formData.name)) {
+      // Check for multiple consecutive spaces
+      newErrors.name = "Name cannot contain multiple consecutive spaces";
     }
 
     if (!formData.category) {
@@ -215,7 +227,13 @@ const TechStackModal: React.FC<TechStackModalProps> = ({
     setIsLoading(true);
 
     try {
-      await onSave(formData);
+      // FIXED: Clean the name properly while preserving internal spaces
+      const cleanedFormData = {
+        ...formData,
+        name: formData.name.trim().replace(/\s+/g, " "), // Replace multiple spaces with single space
+      };
+
+      await onSave(cleanedFormData);
       handleClose();
     } catch (error) {
       console.error("Failed to save tech stack:", error);
@@ -287,18 +305,41 @@ const TechStackModal: React.FC<TechStackModalProps> = ({
               type="text"
               id="name"
               value={formData.name}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, name: e.target.value }))
-              }
+              onChange={(e) => {
+                // Allow all characters including spaces
+                const newValue = e.target.value;
+                setFormData((prev) => ({ ...prev, name: newValue }));
+                // Clear error when user starts typing
+                if (errors.name) {
+                  setErrors((prev) => ({ ...prev, name: undefined }));
+                }
+              }}
+              onKeyDown={(e) => {
+                // Ensure space key works properly
+                if (e.key === " ") {
+                  e.stopPropagation();
+                }
+              }}
               className={`w-full px-4 py-3 bg-background2 border rounded-lg text-whiteText focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
                 errors.name ? "border-red-500" : "border-gray-700"
               }`}
-              placeholder="e.g., React, Node.js, MongoDB"
+              placeholder="e.g., Tailwind CSS, React Native, Node.js, MongoDB Atlas"
               disabled={isLoading}
+              maxLength={50}
+              autoComplete="off"
+              spellCheck="false"
             />
             {errors.name && (
               <p className="text-red-400 text-sm mt-1">{errors.name}</p>
             )}
+            {/* Character counter with better visual feedback */}
+            <p className="text-xs text-grayText mt-1">
+              <span
+                className={formData.name.length > 45 ? "text-yellow-400" : ""}
+              >
+                {formData.name.length}/50 characters
+              </span>
+            </p>
           </div>
 
           {/* Category Select */}

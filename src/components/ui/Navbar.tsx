@@ -1,23 +1,36 @@
-import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  useCallback,
-} from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { gsap } from "gsap";
+import { SplitText } from "gsap/SplitText";
+
+// Register the SplitText plugin
+gsap.registerPlugin(SplitText);
 
 const Navbar = () => {
   const location = useLocation();
-  const backgroundRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [hoveredItem, setHoveredItem] = useState<number | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
   const [hasAnimatedEntrance, setHasAnimatedEntrance] = useState(false);
-  const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const animationRef = useRef<gsap.core.Tween | null>(null);
+  const [, setIsScrolled] = useState(false);
+
+  // Animation tracking for nav links only (excluding name/logo)
+  const animationRefs = useRef<
+    Map<
+      HTMLElement,
+      {
+        timeline?: gsap.core.Timeline;
+        originalSplit?: SplitText;
+        duplicateSplit?: SplitText;
+        isAnimating: boolean;
+        currentState: "normal" | "hovered";
+        targetState: "normal" | "hovered";
+        hoverStartTime?: number;
+        element: HTMLElement;
+      }
+    >
+  >(new Map());
+
+  // Debounce timer for quick hovers
+  const debounceTimers = useRef<Map<HTMLElement, NodeJS.Timeout>>(new Map());
 
   const navItems = [
     { path: "/", label: "HOME" },
@@ -27,336 +40,436 @@ const Navbar = () => {
     { path: "/contact", label: "CONTACT" },
   ];
 
-  const getCurrentIndex = useCallback(() => {
-    return navItems.findIndex((item) => item.path === location.pathname);
-  }, [location.pathname]);
+  // Enhanced cleanup with proper state reset
+  const cleanupAnimation = useCallback((element: HTMLElement) => {
+    const animationData = animationRefs.current.get(element);
+    if (animationData) {
+      // Kill timeline
+      if (animationData.timeline) {
+        animationData.timeline.kill();
+        animationData.timeline = undefined;
+      }
 
-  const moveBackground = useCallback((index: number, immediate = false) => {
-    if (!backgroundRef.current || !containerRef.current) return;
+      // Revert splits
+      if (animationData.originalSplit) {
+        animationData.originalSplit.revert();
+        animationData.originalSplit = undefined;
+      }
+      if (animationData.duplicateSplit) {
+        animationData.duplicateSplit.revert();
+        animationData.duplicateSplit = undefined;
+      }
 
-    const navLinks = containerRef.current.querySelectorAll("a");
-    const targetLink = navLinks[index] as HTMLElement;
-    if (!targetLink) return;
-
-    // Force reflow to get accurate measurements
-    containerRef.current.offsetHeight;
-    targetLink.offsetWidth;
-
-    const containerRect = containerRef.current.getBoundingClientRect();
-    const targetRect = targetLink.getBoundingClientRect();
-
-    // Calculate position with proper offset
-    const targetX = targetRect.left - containerRect.left - 4;
-    const targetWidth = targetRect.width;
-
-    // Ensure we have valid measurements
-    if (targetWidth <= 0) {
-      console.warn("Invalid target width:", targetWidth);
-      return;
+      // Reset animation state
+      animationData.isAnimating = false;
+      animationData.hoverStartTime = undefined;
     }
 
-    // Kill any existing animation for smoother transitions
-    if (animationRef.current) {
-      animationRef.current.kill();
-    }
-
-    // Always show the background when moving it
-    gsap.set(backgroundRef.current, { opacity: 1 });
-
-    if (immediate) {
-      gsap.set(backgroundRef.current, {
-        x: targetX,
-        width: targetWidth,
-        force3D: true,
-      });
-    } else {
-      // Enhanced animation with better easing and faster speed
-      animationRef.current = gsap.to(backgroundRef.current, {
-        x: targetX,
-        width: targetWidth,
-        duration: 0.25, // Reduced from 0.35 to 0.25 for faster animation
-        ease: "power3.out", // Changed to power3.out for smoother, more responsive feel
-        force3D: true,
-        overwrite: "auto",
-        // Add motion blur effect for ultra-smooth perception
-        onUpdate: function () {
-          // Ensure sub-pixel rendering for maximum smoothness
-          const progress = this.progress();
-          if (progress < 1) {
-            gsap.set(backgroundRef.current, {
-              transformOrigin: "left center",
-              backfaceVisibility: "hidden",
-            });
-          }
-        },
-      });
+    // Clear debounce timer
+    const timer = debounceTimers.current.get(element);
+    if (timer) {
+      clearTimeout(timer);
+      debounceTimers.current.delete(element);
     }
   }, []);
 
-  // Initialize background position after DOM is fully ready
-  useLayoutEffect(() => {
-    if (!backgroundRef.current || !containerRef.current) return;
-
-    // Enhanced initial setup with better hardware acceleration
-    gsap.set(backgroundRef.current, {
-      opacity: 0,
-      width: 0,
-      x: 0,
-      force3D: true,
-      transformOrigin: "left center",
-      backfaceVisibility: "hidden",
-      // Add will-change via GSAP for better performance
-      willChange: "transform, width, opacity",
-    });
-
-    const initializeBackground = () => {
-      const currentIndex = getCurrentIndex();
-      if (currentIndex >= 0) {
-        // Force a reflow to ensure all styles are applied
-        containerRef.current!.offsetHeight;
-
-        const navLinks = containerRef.current!.querySelectorAll("a");
-        const targetLink = navLinks[currentIndex] as HTMLElement;
-
-        if (targetLink) {
-          // Force reflow on target element
-          targetLink.offsetWidth;
-
-          // Get computed style to ensure CSS is fully applied
-          const computedStyle = window.getComputedStyle(targetLink);
-          const paddingLeft = parseFloat(computedStyle.paddingLeft);
-          const paddingRight = parseFloat(computedStyle.paddingRight);
-
-          if (paddingLeft > 0 && paddingRight > 0) {
-            // Measure after ensuring styles are applied
-            const containerRect = containerRef.current!.getBoundingClientRect();
-            const targetRect = targetLink.getBoundingClientRect();
-
-            if (
-              containerRect.width > 0 &&
-              targetRect.width > 0 &&
-              targetRect.height > 0
-            ) {
-              // Use setTimeout to ensure measurement is accurate
-              setTimeout(() => {
-                moveBackground(currentIndex, true);
-                setIsInitialized(true);
-              }, 0);
-              return true;
-            }
-          }
-        }
-      }
-      return false;
+  // Handle scroll effect
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      setIsScrolled(scrollTop > 50);
     };
 
-    // Reset initialization state when route changes
-    setIsInitialized(false);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
-    // Use different strategies for initialization
-    const strategies = [
-      // Strategy 1: Immediate
-      () => requestAnimationFrame(initializeBackground),
-      // Strategy 2: After short delay
-      () => setTimeout(() => requestAnimationFrame(initializeBackground), 16),
-      // Strategy 3: After longer delay
-      () => setTimeout(() => requestAnimationFrame(initializeBackground), 50),
-      // Strategy 4: Force with even longer delay
-      () =>
-        setTimeout(() => {
-          const currentIndex = getCurrentIndex();
-          if (currentIndex >= 0) {
-            moveBackground(currentIndex, true);
-            setIsInitialized(true);
-          }
-        }, 200),
-    ];
-
-    let currentStrategy = 0;
-    const maxStrategies = strategies.length;
-
-    const tryNextStrategy = () => {
-      if (currentStrategy < maxStrategies && !isInitialized) {
-        strategies[currentStrategy]();
-        currentStrategy++;
-
-        // Check if initialization succeeded after a delay
-        if (currentStrategy < maxStrategies) {
-          setTimeout(() => {
-            if (!isInitialized) {
-              tryNextStrategy();
-            }
-          }, 100);
-        }
-      }
-    };
-
-    // Start with first strategy
-    tryNextStrategy();
-  }, [location.pathname, getCurrentIndex, moveBackground]);
-
-  // Enhanced navbar entrance animation with smoother timing
+  // Simplified entrance animation (no name animation)
   useEffect(() => {
     if (!navRef.current || hasAnimatedEntrance) return;
 
-    // Enhanced initial state with better hardware acceleration
     gsap.set(navRef.current, {
-      y: 80,
+      y: -30,
       opacity: 0,
-      scale: 0.9,
-      transformOrigin: "center bottom",
-      force3D: true,
-      backfaceVisibility: "hidden",
-      willChange: "transform, opacity",
     });
 
-    // Smoother and slightly faster entrance animation
     const showNavbar = () => {
-      gsap.to(navRef.current, {
+      const tl = gsap.timeline();
+
+      tl.to(navRef.current, {
         y: 0,
         opacity: 1,
-        scale: 1,
-        duration: 0.6, // Reduced from 0.8 to 0.6 for faster entrance
-        ease: "back.out(1.1)", // Slightly reduced bounce for smoother feel
-        delay: 0.1, // Reduced delay from 0.2 to 0.1
-        force3D: true,
+        duration: 0.8,
+        ease: "power2.out",
+      }).call(() => {
+        // Only animate nav links, not the logo/name
+        const navLinks = navRef.current?.querySelectorAll(
+          ".nav-link .original-text"
+        );
+
+        if (navLinks) {
+          const navLinkElements = Array.from(navLinks);
+          if (navLinkElements.length > 0) {
+            navLinkElements.forEach((link, index) => {
+              const linkSplit = new SplitText(link, { type: "chars" });
+              gsap.fromTo(
+                linkSplit.chars,
+                { y: 15, opacity: 0 },
+                {
+                  y: 0,
+                  opacity: 1,
+                  duration: 0.5,
+                  ease: "power3.out",
+                  delay: 0.4 + index * 0.15,
+                  stagger: {
+                    amount: 0.25,
+                    from: "start",
+                  },
+                  onComplete: () => {
+                    linkSplit.revert();
+                  },
+                }
+              );
+            });
+          }
+        }
+
+        setHasAnimatedEntrance(true);
+      });
+    };
+
+    const timer = setTimeout(showNavbar, 150);
+    return () => clearTimeout(timer);
+  }, [hasAnimatedEntrance]);
+
+  // Animation execution for nav links only
+  const executeAnimation = useCallback(
+    (element: HTMLElement, targetState: "normal" | "hovered") => {
+      const originalText = element.querySelector(
+        ".original-text"
+      ) as HTMLElement;
+      const duplicateText = element.querySelector(
+        ".duplicate-text"
+      ) as HTMLElement;
+
+      if (!originalText || !duplicateText) return;
+
+      // Get or create animation data
+      let animationData = animationRefs.current.get(element);
+      if (!animationData) {
+        animationData = {
+          isAnimating: false,
+          currentState: "normal",
+          targetState: "normal",
+          element: element,
+        };
+        animationRefs.current.set(element, animationData);
+      }
+
+      // Skip if already in target state and not animating
+      if (
+        !animationData.isAnimating &&
+        animationData.currentState === targetState
+      ) {
+        return;
+      }
+
+      // If currently animating to same target, skip
+      if (
+        animationData.isAnimating &&
+        animationData.targetState === targetState
+      ) {
+        return;
+      }
+
+      // Cleanup existing animation
+      cleanupAnimation(element);
+
+      // Update states
+      animationData.isAnimating = true;
+      animationData.targetState = targetState;
+      animationData.currentState = animationData.currentState;
+
+      // Animation parameters for nav links
+      const yOffset = 25;
+      const duration = 0.25;
+      const staggerAmount = 0.08;
+      const overlap = 0.06;
+
+      // Set hover color immediately for responsiveness
+      if (targetState === "hovered") {
+        element.style.color = "rgb(255 255 255)"; // white on hover
+      }
+
+      // Create timeline with proper cleanup
+      const tl = gsap.timeline({
         onComplete: () => {
-          setHasAnimatedEntrance(true);
-          // Clean up will-change after animation
-          gsap.set(navRef.current, { willChange: "auto" });
+          const data = animationRefs.current.get(element);
+          if (data) {
+            data.isAnimating = false;
+            data.currentState = targetState;
+
+            // Set final color state
+            if (targetState === "normal") {
+              const isActive = element.getAttribute("data-active") === "true";
+              element.style.color = isActive
+                ? "rgb(156 163 175)"
+                : "rgb(255 255 255)";
+            } else {
+              element.style.color = "rgb(255 255 255)";
+            }
+
+            // Cleanup splits
+            if (data.originalSplit) {
+              data.originalSplit.revert();
+              data.originalSplit = undefined;
+            }
+            if (data.duplicateSplit) {
+              data.duplicateSplit.revert();
+              data.duplicateSplit = undefined;
+            }
+          }
+        },
+        onInterrupt: () => {
+          const data = animationRefs.current.get(element);
+          if (data) {
+            data.isAnimating = false;
+            if (data.originalSplit) {
+              data.originalSplit.revert();
+              data.originalSplit = undefined;
+            }
+            if (data.duplicateSplit) {
+              data.duplicateSplit.revert();
+              data.duplicateSplit = undefined;
+            }
+          }
         },
       });
-    };
 
-    if (isInitialized) {
-      showNavbar();
-    } else {
-      // Fallback: show navbar after timeout even if not initialized
-      const fallbackTimer = setTimeout(showNavbar, 500);
-      return () => clearTimeout(fallbackTimer);
-    }
-  }, [isInitialized, hasAnimatedEntrance]);
+      // Create splits
+      const originalSplit = new SplitText(originalText, { type: "chars" });
+      const duplicateSplit = new SplitText(duplicateText, { type: "chars" });
 
-  // Update background when route changes (fix for missing background)
-  useEffect(() => {
-    if (isInitialized) {
-      const currentIndex = getCurrentIndex();
-      if (currentIndex >= 0) {
-        // Reduced delay for faster route change response
-        setTimeout(() => {
-          moveBackground(currentIndex, true);
-        }, 25); // Reduced from 50ms to 25ms
+      // Store in animation data
+      animationData.timeline = tl;
+      animationData.originalSplit = originalSplit;
+      animationData.duplicateSplit = duplicateSplit;
+
+      if (targetState === "hovered") {
+        // Animate to hovered state
+        tl.set([originalText, duplicateText], { opacity: 1 })
+          .set(duplicateSplit.chars, { y: yOffset, opacity: 0 })
+          .to(
+            originalSplit.chars,
+            {
+              y: -yOffset,
+              opacity: 0,
+              duration: duration,
+              ease: "power2.inOut",
+              stagger: {
+                amount: staggerAmount,
+                from: "start",
+              },
+            },
+            0
+          )
+          .to(
+            duplicateSplit.chars,
+            {
+              y: 0,
+              opacity: 1,
+              duration: duration,
+              ease: "power2.inOut",
+              stagger: {
+                amount: staggerAmount,
+                from: "start",
+              },
+            },
+            overlap
+          );
+      } else {
+        // Animate to normal state
+        tl.set([originalText, duplicateText], { opacity: 1 })
+          .set(originalSplit.chars, { y: -yOffset, opacity: 0 })
+          .to(
+            duplicateSplit.chars,
+            {
+              y: yOffset,
+              opacity: 0,
+              duration: duration,
+              ease: "power2.inOut",
+              stagger: {
+                amount: staggerAmount,
+                from: "start",
+              },
+            },
+            0
+          )
+          .to(
+            originalSplit.chars,
+            {
+              y: 0,
+              opacity: 1,
+              duration: duration,
+              ease: "power2.inOut",
+              stagger: {
+                amount: staggerAmount,
+                from: "start",
+              },
+            },
+            overlap
+          );
       }
-    }
-  }, [location.pathname, isInitialized, getCurrentIndex, moveBackground]);
-
-  // Optimized resize handler with faster response
-  useEffect(() => {
-    const handleResize = () => {
-      if (resizeTimeoutRef.current) {
-        clearTimeout(resizeTimeoutRef.current);
-      }
-
-      resizeTimeoutRef.current = setTimeout(() => {
-        requestAnimationFrame(() => {
-          const currentIndex = getCurrentIndex();
-          if (currentIndex >= 0) {
-            // Force re-measurement on resize
-            moveBackground(currentIndex, true);
-          }
-        });
-      }, 75); // Reduced from 100ms to 75ms for faster resize response
-    };
-
-    window.addEventListener("resize", handleResize, { passive: true });
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      if (resizeTimeoutRef.current) {
-        clearTimeout(resizeTimeoutRef.current);
-      }
-    };
-  }, [getCurrentIndex, moveBackground]);
-
-  const handleMouseEnter = useCallback(
-    (index: number) => {
-      // Use immediate requestAnimationFrame for instant response
-      requestAnimationFrame(() => {
-        setHoveredItem(index);
-        moveBackground(index);
-      });
     },
-    [moveBackground]
+    [cleanupAnimation]
   );
 
-  const handleMouseLeave = useCallback(() => {
-    // Use immediate requestAnimationFrame for instant response
-    requestAnimationFrame(() => {
-      setHoveredItem(null);
-      const currentIndex = getCurrentIndex();
-      if (currentIndex >= 0) moveBackground(currentIndex);
+  // Debounced hover handlers for nav links only
+  const handleHoverWithDebounce = useCallback(
+    (element: HTMLElement, targetState: "normal" | "hovered") => {
+      // Clear existing timer
+      const existingTimer = debounceTimers.current.get(element);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
+      }
+
+      // For hover in, execute immediately for responsiveness
+      if (targetState === "hovered") {
+        executeAnimation(element, targetState);
+      } else {
+        // For hover out, add small debounce to prevent flicker
+        const timer = setTimeout(() => {
+          executeAnimation(element, targetState);
+          debounceTimers.current.delete(element);
+        }, 50);
+
+        debounceTimers.current.set(element, timer);
+      }
+    },
+    [executeAnimation]
+  );
+
+  // Reset all nav states except current element
+  const resetOtherNavStates = useCallback(
+    (currentElement: HTMLElement) => {
+      animationRefs.current.forEach((data, element) => {
+        if (
+          element !== currentElement &&
+          (data.isAnimating || data.currentState === "hovered")
+        ) {
+          handleHoverWithDebounce(element, "normal");
+        }
+      });
+    },
+    [handleHoverWithDebounce]
+  );
+
+  // Nav hover handlers (no name hover handlers needed)
+  const handleNavHover = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>) => {
+      e.preventDefault();
+      const linkElement = e.currentTarget;
+      resetOtherNavStates(linkElement);
+      handleHoverWithDebounce(linkElement, "hovered");
+    },
+    [resetOtherNavStates, handleHoverWithDebounce]
+  );
+
+  const handleNavLeave = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>) => {
+      e.preventDefault();
+      const linkElement = e.currentTarget;
+      handleHoverWithDebounce(linkElement, "normal");
+    },
+    [handleHoverWithDebounce]
+  );
+
+  // Navbar mouse leave handler
+  const handleNavbarMouseLeave = useCallback(() => {
+    animationRefs.current.forEach((data, element) => {
+      if (data.currentState === "hovered" || data.isAnimating) {
+        handleHoverWithDebounce(element, "normal");
+      }
     });
-  }, [getCurrentIndex, moveBackground]);
+  }, [handleHoverWithDebounce]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      animationRefs.current.forEach((_, element) => {
+        cleanupAnimation(element);
+      });
+      animationRefs.current.clear();
+
+      debounceTimers.current.forEach((timer) => {
+        clearTimeout(timer);
+      });
+      debounceTimers.current.clear();
+    };
+  }, [cleanupAnimation]);
 
   return (
     <nav
       ref={navRef}
-      className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 font-centsbook w-fit"
-      onMouseLeave={handleMouseLeave}
+      className="fixed top-0 left-0 right-0 z-50 font-centsbook transition-all duration-300 ease-out"
+      onMouseLeave={handleNavbarMouseLeave}
     >
-      <div
-        ref={containerRef}
-        className="relative bg-black/30 backdrop-blur-md rounded-full px-1 py-1 border border-white/10 shadow-2xl"
-      >
-        {/* Enhanced animated background with better performance */}
-        <div
-          ref={backgroundRef}
-          className="absolute top-1 left-1 h-10 bg-white rounded-full shadow-lg"
-          style={{
-            width: "0px",
-            transform: "translateX(0px)",
-            willChange: "transform, width",
-            backfaceVisibility: "hidden",
-            perspective: 1000,
-            opacity: 0,
-            // Enhanced smoothness with better positioning
-            transformOrigin: "left center",
-            contain: "layout style paint",
-          }}
-        />
+      <div className="w-full px-4 md:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-10 md:h-11 lg:h-12">
+          {/* Left Side - Logo */}
+          <div className="flex-shrink-0">
+            <Link
+              to="/"
+              className="block transition-opacity duration-200 hover:opacity-80"
+            >
+              <img
+                src="/images/logo_final.png"
+                alt="Tito Zaki Saputro"
+                className="h-8 md:h-9 lg:h-10 w-auto"
+              />
+            </Link>
+          </div>
 
-        {/* Navigation items with enhanced transitions */}
-        <ul className="relative flex items-center">
-          {navItems.map((item, index) => {
-            const isActive = location.pathname === item.path;
-            const isHovered = hoveredItem === index;
+          {/* Right Side - Navigation Links */}
+          <div className="flex-shrink-0">
+            <ul className="flex items-center space-x-4 lg:space-x-6">
+              {navItems.map((item) => {
+                const isActive = location.pathname === item.path;
 
-            const shouldBeBlack =
-              isHovered || (isActive && hoveredItem === null);
+                return (
+                  <li key={item.path}>
+                    <Link
+                      to={item.path}
+                      data-active={isActive}
+                      onMouseEnter={handleNavHover}
+                      onMouseLeave={handleNavLeave}
+                      className={`nav-link relative text-sm md:text-base font-normal tracking-wide uppercase whitespace-nowrap transition-colors duration-200 ease-out overflow-hidden block pointer-events-auto ${
+                        isActive ? "text-gray-400" : "text-white"
+                      }`}
+                      style={{
+                        textRendering: "optimizeLegibility",
+                        fontSmooth: "always",
+                        WebkitFontSmoothing: "antialiased",
+                        MozOsxFontSmoothing: "grayscale",
+                      }}
+                    >
+                      <span className="original-text block">{item.label}</span>
+                      <span className="duplicate-text absolute top-0 left-0 opacity-0">
+                        {item.label}
+                      </span>
 
-            return (
-              <li key={item.path}>
-                <Link
-                  to={item.path}
-                  className={`relative px-6 py-2.5 text-sm font-bold tracking-wide rounded-full block uppercase whitespace-nowrap transition-colors duration-200 ease-out ${
-                    shouldBeBlack ? "text-black" : "text-white/70"
-                  }`} // Reduced transition duration from 300ms to 200ms
-                  onMouseEnter={() => handleMouseEnter(index)}
-                  style={{
-                    willChange: "color",
-                    backfaceVisibility: "hidden",
-                    // Enhanced text rendering for smoother color transitions
-                    textRendering: "optimizeLegibility",
-                    fontSmooth: "always",
-                    WebkitFontSmoothing: "antialiased",
-                    MozOsxFontSmoothing: "grayscale",
-                  }}
-                >
-                  {item.label}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+                      {/* Enhanced underline effect */}
+                      <span
+                        className="absolute bottom-0 left-0 w-0 h-0.5 bg-white transition-all duration-300 ease-out"
+                        style={{ transformOrigin: "left center" }}
+                      />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
       </div>
     </nav>
   );
