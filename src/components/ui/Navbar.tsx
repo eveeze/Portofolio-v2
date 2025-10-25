@@ -73,24 +73,33 @@ const Navbar = () => {
     }
   }, []);
 
-  // Handle scroll effect
+  // Handle scroll effect - OPTIMIZED with requestAnimationFrame
   useEffect(() => {
+    let ticking = false;
+
     const handleScroll = () => {
-      const scrollTop = window.scrollY;
-      setIsScrolled(scrollTop > 50);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const scrollTop = window.scrollY;
+          setIsScrolled(scrollTop > 50);
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Simplified entrance animation (no name animation)
+  // Simplified entrance animation (no name animation) - OPTIMIZED
   useEffect(() => {
     if (!navRef.current || hasAnimatedEntrance) return;
 
     gsap.set(navRef.current, {
       y: -30,
       opacity: 0,
+      force3D: true, // GPU acceleration
     });
 
     const showNavbar = () => {
@@ -101,6 +110,7 @@ const Navbar = () => {
         opacity: 1,
         duration: 0.8,
         ease: "power2.out",
+        force3D: true,
       }).call(() => {
         // Only animate nav links, not the logo/name
         const navLinks = navRef.current?.querySelectorAll(
@@ -114,13 +124,18 @@ const Navbar = () => {
               const linkSplit = new SplitText(link, { type: "chars" });
               gsap.fromTo(
                 linkSplit.chars,
-                { y: 15, opacity: 0 },
+                {
+                  y: 15,
+                  opacity: 0,
+                  force3D: true,
+                },
                 {
                   y: 0,
                   opacity: 1,
                   duration: 0.5,
                   ease: "power3.out",
                   delay: 0.4 + index * 0.15,
+                  force3D: true,
                   stagger: {
                     amount: 0.25,
                     from: "start",
@@ -142,7 +157,7 @@ const Navbar = () => {
     return () => clearTimeout(timer);
   }, [hasAnimatedEntrance]);
 
-  // Animation execution for nav links only
+  // Animation execution for nav links only - OPTIMIZED
   const executeAnimation = useCallback(
     (element: HTMLElement, targetState: "normal" | "hovered") => {
       const originalText = element.querySelector(
@@ -190,19 +205,22 @@ const Navbar = () => {
       animationData.targetState = targetState;
       animationData.currentState = animationData.currentState;
 
-      // Animation parameters for nav links
+      // Animation parameters for nav links - OPTIMIZED durations
       const yOffset = 25;
-      const duration = 0.25;
-      const staggerAmount = 0.08;
-      const overlap = 0.06;
+      const duration = 0.22; // Slightly faster
+      const staggerAmount = 0.06; // Tighter stagger
+      const overlap = 0.05; // Better overlap
 
       // Set hover color immediately for responsiveness
       if (targetState === "hovered") {
         element.style.color = "rgb(255 255 255)"; // white on hover
       }
 
-      // Create timeline with proper cleanup
+      // Create timeline with proper cleanup - OPTIMIZED
       const tl = gsap.timeline({
+        defaults: {
+          force3D: true, // GPU acceleration for all animations
+        },
         onComplete: () => {
           const data = animationRefs.current.get(element);
           if (data) {
@@ -256,7 +274,7 @@ const Navbar = () => {
       animationData.duplicateSplit = duplicateSplit;
 
       if (targetState === "hovered") {
-        // Animate to hovered state
+        // Animate to hovered state - OPTIMIZED ease
         tl.set([originalText, duplicateText], { opacity: 1 })
           .set(duplicateSplit.chars, { y: yOffset, opacity: 0 })
           .to(
@@ -265,7 +283,7 @@ const Navbar = () => {
               y: -yOffset,
               opacity: 0,
               duration: duration,
-              ease: "power2.inOut",
+              ease: "power2.out", // Smoother ease
               stagger: {
                 amount: staggerAmount,
                 from: "start",
@@ -279,7 +297,7 @@ const Navbar = () => {
               y: 0,
               opacity: 1,
               duration: duration,
-              ease: "power2.inOut",
+              ease: "power2.out", // Smoother ease
               stagger: {
                 amount: staggerAmount,
                 from: "start",
@@ -288,7 +306,7 @@ const Navbar = () => {
             overlap
           );
       } else {
-        // Animate to normal state
+        // Animate to normal state - OPTIMIZED ease
         tl.set([originalText, duplicateText], { opacity: 1 })
           .set(originalSplit.chars, { y: -yOffset, opacity: 0 })
           .to(
@@ -297,7 +315,7 @@ const Navbar = () => {
               y: yOffset,
               opacity: 0,
               duration: duration,
-              ease: "power2.inOut",
+              ease: "power2.out", // Smoother ease
               stagger: {
                 amount: staggerAmount,
                 from: "start",
@@ -311,7 +329,7 @@ const Navbar = () => {
               y: 0,
               opacity: 1,
               duration: duration,
-              ease: "power2.inOut",
+              ease: "power2.out", // Smoother ease
               stagger: {
                 amount: staggerAmount,
                 from: "start",
@@ -324,7 +342,7 @@ const Navbar = () => {
     [cleanupAnimation]
   );
 
-  // Debounced hover handlers for nav links only
+  // Debounced hover handlers for nav links only - OPTIMIZED timing
   const handleHoverWithDebounce = useCallback(
     (element: HTMLElement, targetState: "normal" | "hovered") => {
       // Clear existing timer
@@ -337,11 +355,11 @@ const Navbar = () => {
       if (targetState === "hovered") {
         executeAnimation(element, targetState);
       } else {
-        // For hover out, add small debounce to prevent flicker
+        // For hover out, minimal debounce
         const timer = setTimeout(() => {
           executeAnimation(element, targetState);
           debounceTimers.current.delete(element);
-        }, 50);
+        }, 30); // Reduced from 50ms
 
         debounceTimers.current.set(element, timer);
       }
@@ -413,6 +431,10 @@ const Navbar = () => {
       ref={navRef}
       className="fixed top-0 left-0 right-0 z-50 font-centsbook transition-all duration-300 ease-out"
       onMouseLeave={handleNavbarMouseLeave}
+      style={{
+        transform: "translateZ(0)",
+        backfaceVisibility: "hidden",
+      }}
     >
       <div className="w-full px-4 md:px-6 lg:px-8">
         <div className="flex items-center justify-between h-10 md:h-11 lg:h-12">
@@ -421,11 +443,17 @@ const Navbar = () => {
             <Link
               to="/"
               className="block transition-opacity duration-200 hover:opacity-80"
+              style={{
+                transform: "translateZ(0)",
+              }}
             >
               <img
                 src="/images/logo_final.png"
                 alt="Tito Zaki Saputro"
                 className="h-8 md:h-9 lg:h-10 w-auto"
+                style={{
+                  transform: "translateZ(0)",
+                }}
               />
             </Link>
           </div>
@@ -451,17 +479,34 @@ const Navbar = () => {
                         fontSmooth: "always",
                         WebkitFontSmoothing: "antialiased",
                         MozOsxFontSmoothing: "grayscale",
+                        transform: "translateZ(0)",
+                        backfaceVisibility: "hidden",
                       }}
                     >
-                      <span className="original-text block">{item.label}</span>
-                      <span className="duplicate-text absolute top-0 left-0 opacity-0">
+                      <span
+                        className="original-text block"
+                        style={{
+                          transform: "translateZ(0)",
+                        }}
+                      >
+                        {item.label}
+                      </span>
+                      <span
+                        className="duplicate-text absolute top-0 left-0 opacity-0"
+                        style={{
+                          transform: "translateZ(0)",
+                        }}
+                      >
                         {item.label}
                       </span>
 
                       {/* Enhanced underline effect */}
                       <span
                         className="absolute bottom-0 left-0 w-0 h-0.5 bg-white transition-all duration-300 ease-out"
-                        style={{ transformOrigin: "left center" }}
+                        style={{
+                          transformOrigin: "left center",
+                          transform: "translateZ(0)",
+                        }}
                       />
                     </Link>
                   </li>
