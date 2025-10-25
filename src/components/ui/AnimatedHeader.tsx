@@ -1,4 +1,4 @@
-// src/components/ui/AnimatedHeader.tsx (Optimized - Same Animation)
+// src/components/ui/AnimatedHeader.tsx (Optimized - Smooth Scroll)
 import { useEffect, useMemo, useRef, RefObject, useCallback } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -52,6 +52,7 @@ const AnimatedTextHeader: React.FC<AnimatedTextHeaderProps> = ({
         style={{
           overflow: "hidden",
           display: "inline-block",
+          transform: "translateZ(0)",
         }}
       >
         {word.split("").map((char, charIndex) => (
@@ -61,6 +62,7 @@ const AnimatedTextHeader: React.FC<AnimatedTextHeaderProps> = ({
             style={{
               willChange: "transform",
               backfaceVisibility: "hidden",
+              transform: "translateZ(0)",
             }}
           >
             {char}
@@ -82,7 +84,7 @@ const AnimatedTextHeader: React.FC<AnimatedTextHeaderProps> = ({
     }
   }, []);
 
-  // Keep EXACT same animation logic
+  // Optimized animation with smoother scroll performance
   const createAnimation = useCallback(() => {
     const el = containerRef.current;
     if (!el || !isReady) return;
@@ -125,31 +127,19 @@ const AnimatedTextHeader: React.FC<AnimatedTextHeaderProps> = ({
 
     timelineRef.current = tl;
 
-    // EXACT same ScrollTrigger
+    // OPTIMIZED ScrollTrigger - smoother scrub & better performance
     scrollTriggerRef.current = ScrollTrigger.create({
       trigger: el,
       start: scrollStart,
       end: scrollEnd,
-      scrub: 1,
+      scrub: 0.5, // Lebih smooth dari 1
       animation: tl,
       invalidateOnRefresh: true,
       refreshPriority: 0,
-      fastScrollEnd: 2000,
-      preventOverlaps: "previous",
+      fastScrollEnd: true,
+      anticipatePin: 1,
       scroller: document.body,
-      onUpdate: (self) => {
-        if (self.isActive) {
-          const progress = Math.max(0, Math.min(1, self.progress));
-          tl.progress(progress);
-        }
-      },
-      onToggle: (self) => {
-        if (self.isActive) {
-          gsap.set(charElements, { willChange: "transform" });
-        } else if (!self.isActive && self.progress === 0) {
-          gsap.set(charElements, { willChange: "auto" });
-        }
-      },
+      // Removed manual onUpdate - let GSAP handle it for smoother performance
     });
   }, [
     animationDuration,
@@ -161,11 +151,15 @@ const AnimatedTextHeader: React.FC<AnimatedTextHeaderProps> = ({
     cleanup,
   ]);
 
-  // Optimized: Combine effects into one
+  // Optimized: Combine effects with refresh on mount
   useEffect(() => {
     if (!isReady) return;
 
-    const timeoutId = setTimeout(createAnimation, delay + 50);
+    const timeoutId = setTimeout(() => {
+      createAnimation();
+      // Refresh ScrollTrigger after animation setup for smooth start
+      ScrollTrigger.refresh();
+    }, delay + 50);
 
     return () => {
       clearTimeout(timeoutId);
