@@ -1,20 +1,28 @@
-// components/work/ProjectCard.tsx
+// components/work/ProjectCard.tsx - Fixed Version
 import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import type { Project } from "../../../lib/types/project";
 
 interface ProjectCardProps {
   project: Project;
-  index: number;
+  index?: number;
+  disableAnimation?: boolean; // Add prop to disable animation when controlled by parent
 }
 
-const ProjectCard = ({ project, index }: ProjectCardProps) => {
+const ProjectCard = ({
+  project,
+  index = 0,
+  disableAnimation = false,
+}: ProjectCardProps) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
+  const animationContextRef = useRef<gsap.Context | null>(null);
 
+  // Only animate on mount if not disabled (parent handles animation)
   useEffect(() => {
+    if (disableAnimation || !cardRef.current) return;
+
     const ctx = gsap.context(() => {
       gsap.from(cardRef.current, {
         opacity: 0,
@@ -25,25 +33,36 @@ const ProjectCard = ({ project, index }: ProjectCardProps) => {
       });
     }, cardRef);
 
-    return () => ctx.revert();
-  }, [index]);
+    animationContextRef.current = ctx;
 
+    return () => {
+      if (animationContextRef.current) {
+        animationContextRef.current.revert();
+      }
+    };
+  }, []); // Only run once on mount
+
+  // Hover animation
   useEffect(() => {
     if (!imageRef.current) return;
 
-    if (isHovered) {
-      gsap.to(imageRef.current, {
-        scale: 1.05,
-        duration: 0.6,
-        ease: "power2.out",
-      });
-    } else {
-      gsap.to(imageRef.current, {
-        scale: 1,
-        duration: 0.6,
-        ease: "power2.out",
-      });
-    }
+    const ctx = gsap.context(() => {
+      if (isHovered) {
+        gsap.to(imageRef.current, {
+          scale: 1.05,
+          duration: 0.6,
+          ease: "power2.out",
+        });
+      } else {
+        gsap.to(imageRef.current, {
+          scale: 1,
+          duration: 0.6,
+          ease: "power2.out",
+        });
+      }
+    }, imageRef);
+
+    return () => ctx.revert();
   }, [isHovered]);
 
   return (
@@ -52,6 +71,7 @@ const ProjectCard = ({ project, index }: ProjectCardProps) => {
       className="group cursor-pointer"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      style={{ opacity: disableAnimation ? 0 : 1 }} // Start invisible if parent controls animation
     >
       {/* Image Container */}
       <div className="relative w-full aspect-[4/3] overflow-hidden rounded-lg bg-background mb-4">
@@ -89,7 +109,7 @@ const ProjectCard = ({ project, index }: ProjectCardProps) => {
       </div>
 
       {/* Content */}
-      <div ref={contentRef} className="space-y-2">
+      <div className="space-y-2">
         {/* Title */}
         <h3 className="font-ogg text-whiteText text-2xl md:text-3xl group-hover:text-grayText transition-colors duration-300">
           {project.title}

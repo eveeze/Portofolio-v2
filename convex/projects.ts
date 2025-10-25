@@ -1,4 +1,4 @@
-// convex/projects.ts - Updated version
+// convex/projects.ts - Updated with optional filtering
 import { v } from "convex/values";
 import { internalMutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
@@ -26,7 +26,6 @@ export const createProject = internalMutation({
     thumbnailStorageId: v.id("_storage"),
   },
   handler: async (ctx, args) => {
-    // Get thumbnail URL from storage
     const thumbnailUrl = await ctx.storage.getUrl(args.thumbnailStorageId);
 
     const projectId = await ctx.db.insert("projects", {
@@ -44,7 +43,7 @@ export const createProject = internalMutation({
   },
 });
 
-// Add images to project (dengan urutan)
+// Add images to project
 export const addProjectImages = internalMutation({
   args: {
     projectId: v.id("projects"),
@@ -57,7 +56,7 @@ export const addProjectImages = internalMutation({
         projectId: args.projectId,
         imageUrl: imageUrl!,
         imageId: storageId,
-        position: index, // Tambahkan posisi untuk urutan
+        position: index,
       });
     });
 
@@ -65,49 +64,72 @@ export const addProjectImages = internalMutation({
   },
 });
 
-// Get all projects with their tech stacks and images (sorted by position)
-export const getProjects = query(async (ctx) => {
-  const projects = await ctx.db.query("projects").collect();
+// UPDATED: Get all projects with OPTIONAL projectType filter
+export const getProjects = query({
+  args: {
+    projectType: v.optional(
+      v.union(
+        v.literal("website"),
+        v.literal("mobile"),
+        v.literal("backend"),
+        v.literal("desktop"),
+        v.literal("other")
+      )
+    ),
+  },
+  handler: async (ctx, args) => {
+    // Query dengan atau tanpa filter
+    let projectsQuery = ctx.db.query("projects");
 
-  const projectsWithDetails = await Promise.all(
-    projects.map(async (project) => {
-      // Get tech stack details
-      const techStackDetails = await Promise.all(
-        project.techStack.map(async (techId) => {
-          const tech = await ctx.db.get(techId);
-          if (tech) {
-            const imageUrl = tech.storageId
-              ? await ctx.storage.getUrl(tech.storageId)
-              : null;
-            return {
-              ...tech,
-              imageUrl,
-            };
-          }
-          return null;
-        })
-      );
-
-      // Get project images sorted by position
-      const projectImages = await ctx.db
-        .query("projectImages")
-        .withIndex("by_projectId", (q) => q.eq("projectId", project._id))
+    // Jika projectType diberikan, filter berdasarkan type
+    let projects;
+    if (args.projectType) {
+      projects = await projectsQuery
+        .filter((q) => q.eq(q.field("projectType"), args.projectType))
         .collect();
+    } else {
+      projects = await projectsQuery.collect();
+    }
 
-      // Sort images by position
-      const sortedImages = projectImages.sort(
-        (a, b) => (a.position || 0) - (b.position || 0)
-      );
+    const projectsWithDetails = await Promise.all(
+      projects.map(async (project) => {
+        // Get tech stack details
+        const techStackDetails = await Promise.all(
+          project.techStack.map(async (techId) => {
+            const tech = await ctx.db.get(techId);
+            if (tech) {
+              const imageUrl = tech.storageId
+                ? await ctx.storage.getUrl(tech.storageId)
+                : null;
+              return {
+                ...tech,
+                imageUrl,
+              };
+            }
+            return null;
+          })
+        );
 
-      return {
-        ...project,
-        techStack: techStackDetails.filter(Boolean),
-        images: sortedImages,
-      };
-    })
-  );
+        // Get project images sorted by position
+        const projectImages = await ctx.db
+          .query("projectImages")
+          .withIndex("by_projectId", (q) => q.eq("projectId", project._id))
+          .collect();
 
-  return projectsWithDetails;
+        const sortedImages = projectImages.sort(
+          (a, b) => (a.position || 0) - (b.position || 0)
+        );
+
+        return {
+          ...project,
+          techStack: techStackDetails.filter(Boolean),
+          images: sortedImages,
+        };
+      })
+    );
+
+    return projectsWithDetails;
+  },
 });
 
 // Get single project by ID
@@ -117,7 +139,6 @@ export const getProject = query({
     const project = await ctx.db.get(args.projectId);
     if (!project) return null;
 
-    // Get tech stack details
     const techStackDetails = await Promise.all(
       project.techStack.map(async (techId) => {
         const tech = await ctx.db.get(techId);
@@ -134,7 +155,6 @@ export const getProject = query({
       })
     );
 
-    // Get project images sorted by position
     const projectImages = await ctx.db
       .query("projectImages")
       .withIndex("by_projectId", (q) => q.eq("projectId", project._id))
@@ -173,18 +193,14 @@ export const updateProject = internalMutation({
   handler: async (ctx, args) => {
     const { projectId, thumbnailStorageId, ...updateData } = args;
 
-    // Prepare update data
     const finalUpdateData: any = { ...updateData };
 
-    // If new thumbnail is provided
     if (thumbnailStorageId) {
-      // Get existing project to delete old thumbnail
       const existingProject = await ctx.db.get(projectId);
       if (existingProject?.thumbnailId) {
         await ctx.storage.delete(existingProject.thumbnailId as Id<"_storage">);
       }
 
-      // Get new thumbnail URL and update data
       const thumbnailUrl = await ctx.storage.getUrl(thumbnailStorageId);
       finalUpdateData.thumbnailUrl = thumbnailUrl;
       finalUpdateData.thumbnailId = thumbnailStorageId;
@@ -194,22 +210,20 @@ export const updateProject = internalMutation({
   },
 });
 
-// Update project images dengan handling existing images
+// Update project images
 export const updateProjectImages = internalMutation({
   args: {
     projectId: v.id("projects"),
     imageStorageIds: v.array(v.id("_storage")),
-    keepExistingImages: v.optional(v.boolean()), // Flag untuk mempertahankan existing images
+    keepExistingImages: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     if (!args.keepExistingImages) {
-      // Get existing images
       const existingImages = await ctx.db
         .query("projectImages")
         .withIndex("by_projectId", (q) => q.eq("projectId", args.projectId))
         .collect();
 
-      // Delete existing images from storage and database
       await Promise.all([
         ...existingImages.map((img) =>
           ctx.storage.delete(img.imageId as Id<"_storage">)
@@ -218,7 +232,6 @@ export const updateProjectImages = internalMutation({
       ]);
     }
 
-    // Add new images with proper positioning
     const existingCount = args.keepExistingImages
       ? (
           await ctx.db
@@ -270,18 +283,14 @@ export const deleteProjectImage = internalMutation({
   handler: async (ctx, args) => {
     const projectImage = await ctx.db.get(args.imageId);
     if (!projectImage) {
-      throw new Error("Project image tidak ditemukan untuk dihapus.");
+      throw new Error("Project image not found");
     }
 
     const projectId = projectImage.projectId;
 
-    // Delete from storage
     await ctx.storage.delete(projectImage.imageId as Id<"_storage">);
-
-    // Delete from database
     await ctx.db.delete(args.imageId);
 
-    // Reorder remaining images
     const remainingImages = await ctx.db
       .query("projectImages")
       .withIndex("by_projectId", (q) => q.eq("projectId", projectId))
@@ -291,7 +300,6 @@ export const deleteProjectImage = internalMutation({
       (a, b) => (a.position || 0) - (b.position || 0)
     );
 
-    // Update positions to maintain sequential order
     const reorderPromises = sortedImages.map((img, index) =>
       ctx.db.patch(img._id, { position: index })
     );
@@ -309,9 +317,7 @@ export const deleteProjectImages = internalMutation({
     const deletePromises = args.imageIds.map(async (imageId) => {
       const projectImage = await ctx.db.get(imageId);
       if (projectImage) {
-        // Delete from storage
         await ctx.storage.delete(projectImage.imageId as Id<"_storage">);
-        // Delete from database
         await ctx.db.delete(imageId);
         return projectImage.projectId;
       }
@@ -323,7 +329,6 @@ export const deleteProjectImages = internalMutation({
       ...new Set(results.filter((id): id is Id<"projects"> => id !== null)),
     ];
 
-    // Reorder images for affected projects
     for (const projectId of projectIds) {
       const remainingImages = await ctx.db
         .query("projectImages")
@@ -343,7 +348,7 @@ export const deleteProjectImages = internalMutation({
   },
 });
 
-// Delete project and all associated images
+// Delete project
 export const deleteProject = internalMutation({
   args: {
     projectId: v.id("projects"),
@@ -351,21 +356,18 @@ export const deleteProject = internalMutation({
   handler: async (ctx, args) => {
     const project = await ctx.db.get(args.projectId);
     if (!project) {
-      throw new Error("Project tidak ditemukan untuk dihapus.");
+      throw new Error("Project not found");
     }
 
-    // Delete thumbnail from storage
     if (project.thumbnailId) {
       await ctx.storage.delete(project.thumbnailId as Id<"_storage">);
     }
 
-    // Get and delete all project images
     const projectImages = await ctx.db
       .query("projectImages")
       .withIndex("by_projectId", (q) => q.eq("projectId", args.projectId))
       .collect();
 
-    // Delete images from storage and database
     await Promise.all([
       ...projectImages.map((img) =>
         ctx.storage.delete(img.imageId as Id<"_storage">)
@@ -373,12 +375,12 @@ export const deleteProject = internalMutation({
       ...projectImages.map((img) => ctx.db.delete(img._id)),
     ]);
 
-    // Delete the project
     await ctx.db.delete(args.projectId);
   },
 });
 
-// Get projects by type
+// DEPRECATED: Use getProjects with projectType parameter instead
+// Kept for backward compatibility
 export const getProjectsByType = query({
   args: {
     projectType: v.union(
@@ -390,6 +392,7 @@ export const getProjectsByType = query({
     ),
   },
   handler: async (ctx, args) => {
+    // Reuse the same logic as getProjects
     const projects = await ctx.db
       .query("projects")
       .filter((q) => q.eq(q.field("projectType"), args.projectType))
@@ -447,7 +450,6 @@ export const searchProjects = query({
 
     const projectsWithDetails = await Promise.all(
       projects.map(async (project) => {
-        // Get tech stack details
         const techStackDetails = await Promise.all(
           project.techStack.map(async (techId) => {
             const tech = await ctx.db.get(techId);
@@ -464,7 +466,6 @@ export const searchProjects = query({
           })
         );
 
-        // Get project images sorted by position
         const projectImages = await ctx.db
           .query("projectImages")
           .withIndex("by_projectId", (q) => q.eq("projectId", project._id))
@@ -503,11 +504,9 @@ export const getProjectStats = query(async (ctx) => {
     {} as Record<string, number>
   );
 
-  // Count total images
   const allImages = await ctx.db.query("projectImages").collect();
   const totalImages = allImages.length;
 
-  // Get average images per project
   const avgImagesPerProject =
     totalProjects > 0
       ? Math.round((totalImages / totalProjects) * 100) / 100

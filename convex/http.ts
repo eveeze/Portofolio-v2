@@ -574,7 +574,61 @@ http.route({
     }
   }),
 });
+// Projects by Type - OPTIONS
+http.route({
+  path: "/projects/by-type",
+  method: "OPTIONS",
+  handler: httpAction(async (ctx, req) => {
+    return new Response(null, {
+      status: 200,
+      headers: getCorsHeaders(),
+    });
+  }),
+});
 
+// Get projects by type - GET
+http.route({
+  path: "/projects/by-type",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    console.log("GET /projects/by-type route hit");
+
+    try {
+      const url = new URL(request.url);
+      const searchParams = url.searchParams;
+      const projectType = searchParams.get("type"); // Ambil dari ?type=...
+
+      if (!projectType) {
+        return new Response(
+          JSON.stringify({ error: "Query parameter 'type' is required" }),
+          {
+            status: 400,
+            headers: getCorsHeaders(),
+          }
+        );
+      } // Panggil query Anda dari projects.ts
+
+      const articles = await ctx.runQuery(api.projects.getProjectsByType, {
+        projectType: projectType as any, // 'any' digunakan di sini agar mudah,
+        // karena query Anda sudah memvalidasi tipenya
+      });
+
+      return new Response(JSON.stringify(articles), {
+        status: 200,
+        headers: getCorsHeaders(),
+      });
+    } catch (error) {
+      console.error("Error getting projects by type:", error);
+      return new Response(
+        JSON.stringify({ error: "Failed to get projects by type" }),
+        {
+          status: 500,
+          headers: getCorsHeaders(),
+        }
+      );
+    }
+  }),
+});
 // Delete project
 http.route({
   pathPrefix: "/projects/",

@@ -1,52 +1,43 @@
-// pages/Work.tsx
-import { useState, useEffect, useRef, useMemo } from "react";
+// pages/Work.tsx - Fixed Race Condition Version
+import { useState, useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useProjects, useProjectStats } from "../../hooks/useProjects";
 import ProjectFilter from "../fragments/work/ProjectFilter";
 import ProjectCard from "../fragments/work/ProjectCard";
-import type { ProjectType } from "../../lib/types/project";
+import type { ProjectType, Project } from "../../lib/types/project";
 
 gsap.registerPlugin(ScrollTrigger);
 
 const Work = () => {
   const [activeFilter, setActiveFilter] = useState<ProjectType | "all">("all");
+  const [isAnimating, setIsAnimating] = useState(false);
 
-  const { projects, isLoading } = useProjects();
+  // Single query - filter di backend via hook
+  const { projects, isLoading: isLoadingProjects } = useProjects(
+    activeFilter === "all" ? undefined : activeFilter
+  );
+
   const { stats } = useProjectStats();
 
   const headerRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const countRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  const animationContextRef = useRef<gsap.Context | null>(null);
 
-  // Filter projects based on active filter
-  const filteredProjects = useMemo(() => {
-    if (!projects) return [];
-    if (activeFilter === "all") return projects;
-    return projects.filter((project) => project.projectType === activeFilter);
-  }, [projects, activeFilter]);
+  const projectCounts = stats?.projectsByType || {};
 
-  // Project counts for filter badges
-  const projectCounts = useMemo(() => {
-    if (!stats?.projectsByType) return {};
-    return stats.projectsByType;
-  }, [stats]);
-
-  // Header animations
+  // Animate header on mount (ONCE)
   useEffect(() => {
     const ctx = gsap.context(() => {
       const tl = gsap.timeline();
-
-      // Animate title
       tl.from(titleRef.current, {
         opacity: 0,
         y: 100,
         duration: 1.2,
         ease: "power3.out",
       });
-
-      // Animate count
       tl.from(
         countRef.current,
         {
@@ -60,27 +51,63 @@ const Work = () => {
     }, headerRef);
 
     return () => ctx.revert();
+  }, []); // Empty dependency - only run once on mount
+
+  // Animate grid when projects change
+  useEffect(() => {
+    if (!gridRef.current || !projects || projects.length === 0 || isAnimating) {
+      return;
+    }
+
+    // Cleanup previous animation context
+    if (animationContextRef.current) {
+      animationContextRef.current.revert();
+    }
+
+    setIsAnimating(true);
+
+    // Small delay to ensure DOM is ready
+    const timeoutId = setTimeout(() => {
+      animationContextRef.current = gsap.context(() => {
+        const children = Array.from(gridRef.current?.children || []);
+
+        if (children.length > 0) {
+          // Set initial state
+          gsap.set(children, { opacity: 0, y: 60 });
+
+          // Animate in
+          gsap.to(children, {
+            opacity: 1,
+            y: 0,
+            duration: 0.8,
+            stagger: 0.1,
+            ease: "power3.out",
+            onComplete: () => {
+              setIsAnimating(false);
+            },
+          });
+        } else {
+          setIsAnimating(false);
+        }
+      }, gridRef);
+    }, 50); // Small delay to prevent race condition
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [projects?.length, activeFilter]); // Only depend on projects length and filter
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (animationContextRef.current) {
+        animationContextRef.current.revert();
+      }
+    };
   }, []);
 
-  // Grid animations on filter change
-  useEffect(() => {
-    if (!gridRef.current) return;
-
-    const ctx = gsap.context(() => {
-      gsap.from(gridRef.current?.children || [], {
-        opacity: 0,
-        y: 60,
-        duration: 0.8,
-        stagger: 0.1,
-        ease: "power3.out",
-      });
-    }, gridRef);
-
-    return () => ctx.revert();
-  }, [activeFilter, filteredProjects]);
-
   // Loading state
-  if (isLoading) {
+  if (isLoadingProjects) {
     return (
       <section className="w-full min-h-screen bg-background2 flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -91,18 +118,22 @@ const Work = () => {
     );
   }
 
-  // No projects state
+  // Empty state for all projects
   if (!projects || projects.length === 0) {
-    return (
-      <section className="w-full min-h-screen bg-background2 flex items-center justify-center">
-        <div className="text-center space-y-4 max-w-md">
-          <h2 className="font-ogg text-whiteText text-4xl">No Projects Yet</h2>
-          <p className="font-centsbook text-grayText">
-            Projects will appear here once they are added.
-          </p>
-        </div>
-      </section>
-    );
+    if (activeFilter === "all") {
+      return (
+        <section className="w-full min-h-screen bg-background2 flex items-center justify-center">
+          <div className="text-center space-y-4 max-w-md">
+            <h2 className="font-ogg text-whiteText text-4xl">
+              No Projects Yet
+            </h2>
+            <p className="font-centsbook text-grayText">
+              Projects will appear here once they are added.
+            </p>
+          </div>
+        </section>
+      );
+    }
   }
 
   return (
@@ -121,7 +152,7 @@ const Work = () => {
               ref={countRef}
               className="font-centsbook text-whiteText text-5xl md:text-7xl lg:text-8xl"
             >
-              {filteredProjects.length}
+              {projects ? projects.length : 0}
             </div>
           </div>
 
@@ -134,13 +165,17 @@ const Work = () => {
         </div>
 
         {/* Projects Grid */}
-        {filteredProjects.length > 0 ? (
+        {projects && projects.length > 0 ? (
           <div
             ref={gridRef}
             className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 lg:gap-16"
           >
-            {filteredProjects.map((project, index) => (
-              <ProjectCard key={project._id} project={project} index={index} />
+            {projects.map((project) => (
+              <ProjectCard
+                key={project._id}
+                project={project as Project}
+                disableAnimation={true} // Disable card animation to prevent conflict
+              />
             ))}
           </div>
         ) : (
