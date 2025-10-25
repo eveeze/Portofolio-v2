@@ -1,14 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { gsap } from "gsap";
-import { ArrowTopRightIcon } from "@radix-ui/react-icons";
 
 const Hero: React.FC = () => {
-  const learnRef = useRef<HTMLSpanElement>(null);
-  const moreRef = useRef<HTMLSpanElement>(null);
-  const downloadRef = useRef<HTMLSpanElement>(null);
-  const cvRef = useRef<HTMLSpanElement>(null);
-  const learnMoreContainerRef = useRef<HTMLAnchorElement>(null);
-  const downloadCvContainerRef = useRef<HTMLAnchorElement>(null);
   const topHeaderRefs = useRef<HTMLHeadingElement[]>([]);
   const fullstackTitleRef = useRef<HTMLHeadingElement>(null);
   const developerTitleRef = useRef<HTMLHeadingElement>(null);
@@ -84,27 +77,6 @@ const Hero: React.FC = () => {
       ? splitTextIntoChars(rightBrandRef.current)
       : [];
 
-    // Split button text menjadi kata-kata terpisah
-    const learnChars = learnRef.current
-      ? splitTextIntoChars(learnRef.current)
-      : [];
-    const moreChars = moreRef.current
-      ? splitTextIntoChars(moreRef.current)
-      : [];
-    const downloadChars = downloadRef.current
-      ? splitTextIntoChars(downloadRef.current)
-      : [];
-    const cvChars = cvRef.current ? splitTextIntoChars(cvRef.current) : [];
-
-    const learnMoreArrow =
-      learnMoreContainerRef.current?.querySelector(".arrowRight");
-    const downloadCvArrow =
-      downloadCvContainerRef.current?.querySelector(".arrowRight");
-    const learnMoreGrayUnderline =
-      learnMoreContainerRef.current?.querySelector(".gray-underline");
-    const downloadCvGrayUnderline =
-      downloadCvContainerRef.current?.querySelector(".gray-underline");
-
     // === TIMELINE ANIMASI MASUK (ENTRANCE ANIMATION) DARI KODE LAMA ANDA ===
     const entranceTl = gsap.timeline({ delay: 0.3 });
 
@@ -121,20 +93,6 @@ const Hero: React.FC = () => {
       force3D: true,
     });
     gsap.set(rightBrandChars, { opacity: 0, y: "100%", force3D: true });
-    gsap.set([...learnChars, ...moreChars, ...downloadChars, ...cvChars], {
-      opacity: 0,
-      y: "100%",
-      force3D: true,
-    });
-    gsap.set([learnMoreArrow, downloadCvArrow], {
-      opacity: 0,
-      y: "100%",
-      rotation: 0,
-    });
-    gsap.set([learnMoreGrayUnderline, downloadCvGrayUnderline], {
-      scaleX: 0,
-      transformOrigin: "left center",
-    });
     gsap.set(profileImageRef.current, { opacity: 0, scale: 0.8 });
 
     entranceTl
@@ -202,82 +160,6 @@ const Hero: React.FC = () => {
         2.0
       )
       .to(
-        learnChars,
-        {
-          opacity: 1,
-          y: "0%",
-          duration: 0.6,
-          stagger: {
-            amount: Math.min(0.02 * learnChars.length, 0.3),
-            ease: "power1.out",
-          },
-          ease: "power2.out",
-          force3D: true,
-        },
-        2.6
-      )
-      .to(
-        moreChars,
-        {
-          opacity: 1,
-          y: "0%",
-          duration: 0.6,
-          stagger: {
-            amount: Math.min(0.02 * moreChars.length, 0.3),
-            ease: "power1.out",
-          },
-          ease: "power2.out",
-          force3D: true,
-        },
-        2.75
-      )
-      .to(
-        downloadChars,
-        {
-          opacity: 1,
-          y: "0%",
-          duration: 0.6,
-          stagger: {
-            amount: Math.min(0.02 * downloadChars.length, 0.3),
-            ease: "power1.out",
-          },
-          ease: "power2.out",
-          force3D: true,
-        },
-        2.9
-      )
-      .to(
-        cvChars,
-        {
-          opacity: 1,
-          y: "0%",
-          duration: 0.6,
-          stagger: {
-            amount: Math.min(0.02 * cvChars.length, 0.3),
-            ease: "power1.out",
-          },
-          ease: "power2.out",
-          force3D: true,
-        },
-        3.05
-      )
-      .to(
-        [learnMoreArrow, downloadCvArrow],
-        {
-          opacity: 1,
-          y: "0%",
-          duration: 0.6,
-          stagger: 0.1,
-          ease: "power2.out",
-        },
-        3.2
-      )
-      .to(
-        [learnMoreGrayUnderline, downloadCvGrayUnderline],
-        { scaleX: 1, duration: 0.5, stagger: 0.1, ease: "power2.out" },
-        3.25
-      )
-      .to(
         rightBrandChars,
         {
           opacity: 1,
@@ -290,77 +172,10 @@ const Hero: React.FC = () => {
           ease: "power2.out",
           force3D: true,
         },
-        3.3
+        2.6
       );
-
-    // === FUNGSI REUSABLE UNTUK ANIMASI HOVER TOMBOL (UPDATED) ===
-    const setupButtonHoverAnimation = (
-      containerRef: React.RefObject<HTMLAnchorElement | null>
-    ) => {
-      const containerEl = containerRef.current;
-      if (!containerEl) return () => {};
-      const textElements =
-        containerEl.querySelectorAll<HTMLElement>(".text-word");
-      const whiteUnderline = containerEl.querySelector<HTMLElement>(
-        ".underline-animation"
-      );
-      const arrow = containerEl.querySelector<HTMLElement>(".arrowRight");
-      if (!textElements.length || !whiteUnderline || !arrow) return () => {};
-
-      // Set initial state untuk underline putih
-      gsap.set(whiteUnderline, { scaleX: 0, transformOrigin: "left center" });
-
-      const onMouseEnter = () => {
-        gsap.to(textElements, {
-          color: "#efefee",
-          duration: 0.3,
-          ease: "power1.out",
-        });
-        gsap.to(whiteUnderline, {
-          scaleX: 1,
-          duration: 0.3,
-          ease: "power1.out",
-        });
-        gsap.to(arrow, {
-          rotation: 90,
-          duration: 0.3,
-          ease: "power1.out",
-        });
-      };
-
-      const onMouseLeave = () => {
-        gsap.to(textElements, {
-          color: "#848484",
-          duration: 0.3,
-          ease: "power1.out",
-        });
-        gsap.to(whiteUnderline, {
-          scaleX: 0,
-          duration: 0.3,
-          ease: "power1.out",
-        });
-        gsap.to(arrow, {
-          rotation: 0,
-          duration: 0.3,
-          ease: "power1.out",
-        });
-      };
-
-      containerEl.addEventListener("mouseenter", onMouseEnter);
-      containerEl.addEventListener("mouseleave", onMouseLeave);
-
-      return () => {
-        containerEl.removeEventListener("mouseenter", onMouseEnter);
-        containerEl.removeEventListener("mouseleave", onMouseLeave);
-      };
-    };
-
-    const learnMoreCleanup = setupButtonHoverAnimation(learnMoreContainerRef);
-    const downloadCvCleanup = setupButtonHoverAnimation(downloadCvContainerRef);
 
     return () => {
-      learnMoreCleanup();
-      downloadCvCleanup();
       entranceTl.kill();
     };
   }, []);
@@ -450,79 +265,6 @@ const Hero: React.FC = () => {
           <p className="text-sm sm:text-base md:text-lg font-centsbook text-grayText tracking-tighter leading-tight mb-0">
             SEAMLESS DIGITAL EXPERIENCES.
           </p>
-        </div>
-
-        {/* Buttons Container - Terpisah dengan jelas */}
-        <div
-          className="absolute left-1/2 transform -translate-x-1/2 sm:left-1/3 sm:transform sm:-translate-x-1/2 z-10 ml-12"
-          style={{ bottom: "3.1rem" }}
-        >
-          <div className="flex flex-col sm:flex-row items-center sm:items-start">
-            {/* Learn More Button - Split menjadi 2 kata */}
-            <div className="mb-8 sm:mb-0 sm:mr-8 lg:mr-16">
-              <a
-                ref={learnMoreContainerRef}
-                href="#about"
-                className="relative inline-block cursor-pointer group"
-                style={{ lineHeight: "0.7" }}
-              >
-                <div className="flex items-center space-x-2 sm:space-x-3">
-                  <div className="flex items-center space-x-3 sm:space-x-4">
-                    <span
-                      ref={learnRef}
-                      className="text-word text-lg sm:text-xl lg:text-2xl font-centsbook tracking-wider text-grayText no-select"
-                    >
-                      LEARN
-                    </span>
-                    <span
-                      ref={moreRef}
-                      className="text-word text-lg sm:text-xl lg:text-2xl font-centsbook tracking-wider text-grayText no-select"
-                    >
-                      MORE
-                    </span>
-                  </div>
-                  <div className="arrow-container">
-                    <ArrowTopRightIcon className="arrowRight w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-whiteText mb-2" />
-                  </div>
-                </div>
-                <div className="gray-underline absolute bottom-0 left-0 w-full h-0.5 bg-grayText"></div>
-                <div className="underline-animation absolute bottom-0 left-0 w-full h-0.5 bg-whiteText"></div>
-              </a>
-            </div>
-
-            {/* Download CV Button - Split menjadi 2 kata */}
-            <div>
-              <a
-                ref={downloadCvContainerRef}
-                href="/path-to-your-cv.pdf"
-                download
-                className="relative inline-block cursor-pointer group"
-                style={{ lineHeight: "0.7" }}
-              >
-                <div className="flex items-center space-x-2 sm:space-x-3">
-                  <div className="flex items-center space-x-3 sm:space-x-4">
-                    <span
-                      ref={downloadRef}
-                      className="text-word text-lg sm:text-xl lg:text-2xl font-centsbook tracking-wider text-grayText no-select"
-                    >
-                      DOWNLOAD
-                    </span>
-                    <span
-                      ref={cvRef}
-                      className="text-word text-lg sm:text-xl lg:text-2xl font-centsbook tracking-wider text-grayText no-select"
-                    >
-                      CV
-                    </span>
-                  </div>
-                  <div className="arrow-container">
-                    <ArrowTopRightIcon className="arrowRight w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-whiteText mb-2" />
-                  </div>
-                </div>
-                <div className="gray-underline absolute bottom-0 left-0 w-full h-0.5 bg-grayText"></div>
-                <div className="underline-animation absolute bottom-0 left-0 w-full h-0.5 bg-whiteText"></div>
-              </a>
-            </div>
-          </div>
         </div>
 
         {/* Right Brand Name */}

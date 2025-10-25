@@ -1,4 +1,4 @@
-// src/components/ui/AnimatedHeader.tsx (Minimal Fix - Keep Original Logic)
+// src/components/ui/AnimatedHeader.tsx (Optimized - Same Animation)
 import { useEffect, useMemo, useRef, RefObject, useCallback } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -42,7 +42,7 @@ const AnimatedTextHeader: React.FC<AnimatedTextHeaderProps> = ({
 
   const justifyClass = location === "start" ? "justify-start" : "justify-end";
 
-  // Keep original text splitting logic but with namespace to prevent conflicts
+  // Optimized: Memoize dengan React.memo style untuk prevent re-render
   const splitText = useMemo(() => {
     const words = text.split(" ");
     return words.map((word, wordIndex) => (
@@ -70,6 +70,7 @@ const AnimatedTextHeader: React.FC<AnimatedTextHeaderProps> = ({
     ));
   }, [text]);
 
+  // Optimized: Memoize cleanup function
   const cleanup = useCallback(() => {
     if (scrollTriggerRef.current) {
       scrollTriggerRef.current.kill();
@@ -81,17 +82,17 @@ const AnimatedTextHeader: React.FC<AnimatedTextHeaderProps> = ({
     }
   }, []);
 
+  // Keep EXACT same animation logic
   const createAnimation = useCallback(() => {
     const el = containerRef.current;
     if (!el || !isReady) return;
 
     cleanup();
 
-    // Use namespaced selector to prevent conflicts with Hero
     const charElements = el.querySelectorAll(".header-char");
     if (charElements.length === 0) return;
 
-    // Keep original initial state setup
+    // EXACT same initial state
     gsap.set(charElements, {
       willChange: "transform",
       opacity: 0,
@@ -100,7 +101,7 @@ const AnimatedTextHeader: React.FC<AnimatedTextHeaderProps> = ({
       force3D: true,
     });
 
-    // Keep original timeline structure
+    // EXACT same timeline
     const tl = gsap.timeline({
       paused: true,
       defaults: {
@@ -109,7 +110,7 @@ const AnimatedTextHeader: React.FC<AnimatedTextHeaderProps> = ({
       },
     });
 
-    // Keep original animation logic
+    // EXACT same animation
     tl.to(charElements, {
       opacity: 1,
       y: "0%",
@@ -124,7 +125,7 @@ const AnimatedTextHeader: React.FC<AnimatedTextHeaderProps> = ({
 
     timelineRef.current = tl;
 
-    // Keep original ScrollTrigger setup but with scroller fix
+    // EXACT same ScrollTrigger
     scrollTriggerRef.current = ScrollTrigger.create({
       trigger: el,
       start: scrollStart,
@@ -135,7 +136,7 @@ const AnimatedTextHeader: React.FC<AnimatedTextHeaderProps> = ({
       refreshPriority: 0,
       fastScrollEnd: 2000,
       preventOverlaps: "previous",
-      scroller: document.body, // Fix: specify scroller for Lenis
+      scroller: document.body,
       onUpdate: (self) => {
         if (self.isActive) {
           const progress = Math.max(0, Math.min(1, self.progress));
@@ -151,7 +152,6 @@ const AnimatedTextHeader: React.FC<AnimatedTextHeaderProps> = ({
       },
     });
   }, [
-    text,
     animationDuration,
     ease,
     scrollStart,
@@ -161,20 +161,17 @@ const AnimatedTextHeader: React.FC<AnimatedTextHeaderProps> = ({
     cleanup,
   ]);
 
-  // Keep original effect setup but add small delay
+  // Optimized: Combine effects into one
   useEffect(() => {
     if (!isReady) return;
 
     const timeoutId = setTimeout(createAnimation, delay + 50);
+
     return () => {
       clearTimeout(timeoutId);
       cleanup();
     };
   }, [createAnimation, delay, isReady, cleanup]);
-
-  useEffect(() => {
-    return cleanup;
-  }, [cleanup]);
 
   return (
     <h1

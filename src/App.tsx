@@ -2,7 +2,7 @@
 import About from "./components/pages/About";
 import Home from "./components/pages/Home";
 import Contact from "./components/pages/Contact";
-import Project from "./components/pages/Project";
+import Project from "./components/pages/Work";
 import AdminLogin from "./components/pages/AdminLogin";
 import AdminRegister from "./components/pages/AdminRegister";
 import AdminDashboard from "./components/pages/AdminDashboard";
@@ -77,7 +77,7 @@ const App = () => {
                 }
               />
               <Route
-                path="/project"
+                path="/work"
                 element={
                   <PublicLayout>
                     <Project />

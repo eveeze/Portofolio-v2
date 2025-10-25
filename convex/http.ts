@@ -1,4 +1,4 @@
-// convex/http.ts - VERSI LENGKAP & DIPERBAIKI
+// convex/http.ts
 
 import { httpRouter } from "convex/server";
 import { internal } from "./_generated/api";
