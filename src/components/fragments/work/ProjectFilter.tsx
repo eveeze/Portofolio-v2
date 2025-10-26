@@ -1,6 +1,4 @@
-// components/work/ProjectFilter.tsx
-import { useEffect, useRef } from "react";
-import gsap from "gsap";
+// components/fragments/work/ProjectFilter.tsx - Fixed Version
 import type { ProjectType } from "../../../lib/types/project";
 
 interface ProjectFilterProps {
@@ -9,89 +7,72 @@ interface ProjectFilterProps {
   projectCounts: Record<string, number>;
 }
 
-const filters: Array<{ id: ProjectType | "all"; label: string }> = [
-  { id: "all", label: "All" },
-  { id: "website", label: "Website" },
-  { id: "mobile", label: "Mobile" },
-  { id: "backend", label: "Backend" },
-  { id: "desktop", label: "Desktop" },
-  { id: "other", label: "Other" },
-];
-
 const ProjectFilter = ({
   activeFilter,
   onFilterChange,
   projectCounts,
 }: ProjectFilterProps) => {
-  const filterRef = useRef<HTMLDivElement>(null);
-  const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  // Define all available filters with labels
+  const filters: Array<{ value: ProjectType | "all"; label: string }> = [
+    { value: "all", label: "ALL" },
+    { value: "website", label: "WEBSITE" },
+    { value: "mobile", label: "MOBILE" },
+    { value: "backend", label: "BACKEND" },
+    { value: "desktop", label: "DESKTOP" },
+    { value: "other", label: "OTHER" },
+  ];
 
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.from(buttonRefs.current, {
-        opacity: 0,
-        y: -20,
-        duration: 0.6,
-        stagger: 0.1,
-        ease: "power3.out",
-      });
-    }, filterRef);
-
-    return () => ctx.revert();
-  }, []);
-
-  const handleFilterClick = (filterId: ProjectType | "all") => {
-    onFilterChange(filterId);
+  // Get count for each filter (default to 0 if not found)
+  const getCount = (filterValue: ProjectType | "all"): number => {
+    if (filterValue === "all") {
+      // Sum all project counts for "all"
+      return Object.values(projectCounts).reduce(
+        (sum, count) => sum + count,
+        0
+      );
+    }
+    return projectCounts[filterValue] || 0;
   };
 
   return (
-    <div ref={filterRef} className="w-full mb-12 md:mb-16">
-      <div className="flex flex-wrap items-center gap-3 md:gap-4">
-        <span className="font-centsbook text-grayText text-sm md:text-base mr-2">
-          Filter
-        </span>
-        {filters.map((filter, index) => {
-          const count =
-            filter.id === "all"
-              ? Object.values(projectCounts).reduce((a, b) => a + b, 0)
-              : projectCounts[filter.id] || 0;
+    <div className="flex flex-wrap gap-3 md:gap-4">
+      {filters.map((filter) => {
+        const count = getCount(filter.value);
+        const isActive = activeFilter === filter.value;
 
-          return (
-            <button
-              key={filter.id}
-              ref={(el) => {
-                buttonRefs.current[index] = el;
-              }}
-              onClick={() => handleFilterClick(filter.id)}
-              className={`
-                relative px-4 py-2 rounded-full font-centsbook text-sm md:text-base
-                transition-all duration-300 ease-out
+        return (
+          <button
+            key={filter.value}
+            onClick={() => onFilterChange(filter.value)}
+            className={`
+              relative px-6 py-3 font-centsbook text-sm md:text-base
+              transition-all duration-300 ease-out
+              border-2 rounded-full
+              ${
+                isActive
+                  ? "border-whiteText text-whiteText bg-whiteText/5"
+                  : "border-whiteText/20 text-grayText hover:border-whiteText/40 hover:text-whiteText"
+              }
+            `}
+          >
+            <span className="flex items-center gap-2">
+              {filter.label}
+              <span
+                className={`
+                text-xs px-2 py-0.5 rounded-full
                 ${
-                  activeFilter === filter.id
-                    ? "bg-whiteText text-background"
-                    : "bg-transparent text-grayText border border-grayText/30 hover:border-whiteText/50 hover:text-whiteText"
+                  isActive
+                    ? "bg-whiteText text-background2"
+                    : "bg-whiteText/10 text-grayText"
                 }
               `}
-            >
-              <span className="relative z-10 flex items-center gap-2">
-                {filter.label}
-                <span
-                  className={`
-                  text-xs
-                  ${
-                    activeFilter === filter.id
-                      ? "text-background/70"
-                      : "text-grayText"
-                  }
-                `}
-                >
-                  {count}
-                </span>
+              >
+                {count}
               </span>
-            </button>
-          );
-        })}
-      </div>
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 };

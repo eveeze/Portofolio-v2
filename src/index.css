@@ -1,4 +1,4 @@
-/* Enhanced index.css for Ultra Smooth Scrolling */
+/* Enhanced index.css for Ultra Smooth Scrolling + Custom Cursor */
 
 @import "tailwindcss";
 @config "../tailwind.config.js";
@@ -39,48 +39,32 @@
 /* Global scrolling optimizations */
 * {
   scroll-behavior: auto;
-  /* Let Lenis handle the smooth scrolling */
 }
 
 html {
-  /* Prevent default smooth scrolling to let Lenis take control */
   scroll-behavior: auto;
-  /* Enhanced text rendering */
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* Prevent scroll chaining */
   overscroll-behavior: none;
-  /* Enhanced scrollbar styling */
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
 }
 
 body {
   @apply bg-background2;
-  /* Critical scrolling optimizations */
   overscroll-behavior: none;
   overscroll-behavior-y: none;
   overscroll-behavior-x: none;
-
-  /* Enhanced performance */
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  /* Prevent momentum scrolling on iOS */
   -webkit-overflow-scrolling: touch;
-
-  /* Smooth hardware acceleration */
   transform: translateZ(0);
   backface-visibility: hidden;
   perspective: 1000px;
-
-  /* Remove default margins/padding that can cause scroll issues */
   margin: 0;
   padding: 0;
-
-  /* Ensure consistent sizing */
   width: 100%;
   min-height: 100vh;
 }
@@ -126,7 +110,6 @@ body {
 
 /* Optimize scrolling containers */
 #root {
-  /* Ensure root container is optimized */
   width: 100%;
   min-height: 100vh;
   transform: translateZ(0);
@@ -135,7 +118,6 @@ body {
 
 /* Enhanced smooth scrolling for all scrollable elements */
 .scroll-container {
-  /* For any custom scroll containers */
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: none;
   transform: translateZ(0);
@@ -229,7 +211,7 @@ body.preloader-active {
 
 /* === HERO COMPONENT STYLES === */
 
-/* User selection prevention - menggunakan class yang sudah ada di preloader */
+/* User selection prevention */
 .no-select {
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -274,10 +256,29 @@ body.preloader-active {
   transform: translateZ(0);
 }
 
+/* === CUSTOM CURSOR STYLES === */
+
+/* Hide default cursor on project cards */
+.cursor-none {
+  cursor: none !important;
+}
+
+/* Custom cursor optimization */
+.cursor-none * {
+  cursor: none !important;
+}
+
+/* Ensure cursor element is hardware accelerated */
+.cursor-element {
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  pointer-events: none;
+}
+
 /* Responsive optimizations */
 @media (max-width: 768px) {
   body {
-    /* Enhanced mobile scroll performance */
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: none;
   }
@@ -289,6 +290,15 @@ body.preloader-active {
   ::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.15);
     border-radius: 2px;
+  }
+
+  /* Reset cursor to default on mobile */
+  .cursor-none {
+    cursor: default !important;
+  }
+
+  .cursor-none * {
+    cursor: default !important;
   }
 }
 
@@ -325,7 +335,6 @@ body.preloader-active {
   width: 100%;
   height: 1px;
   background: white/80;
-  /* untuk links */
   transform: scaleX(0);
   transform-origin: left;
   transition: transform 400ms ease-out;

@@ -1,4 +1,4 @@
-// components/work/ProjectCard.tsx - Fixed Version
+// components/work/ProjectCard.tsx - Optimized with Ultra Smooth Title Animation
 import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import type { Project } from "../../../lib/types/project";
@@ -6,7 +6,7 @@ import type { Project } from "../../../lib/types/project";
 interface ProjectCardProps {
   project: Project;
   index?: number;
-  disableAnimation?: boolean; // Add prop to disable animation when controlled by parent
+  disableAnimation?: boolean;
 }
 
 const ProjectCard = ({
@@ -16,10 +16,14 @@ const ProjectCard = ({
 }: ProjectCardProps) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLDivElement>(null);
-  const [isHovered, setIsHovered] = useState(false);
+  const cursorRef = useRef<HTMLDivElement>(null);
+  const titleTopRef = useRef<HTMLDivElement>(null);
+  const titleBottomRef = useRef<HTMLDivElement>(null);
+
+  const [, setIsHovered] = useState(false);
   const animationContextRef = useRef<gsap.Context | null>(null);
 
-  // Only animate on mount if not disabled (parent handles animation)
+  // Only animate on mount if not disabled
   useEffect(() => {
     if (disableAnimation || !cardRef.current) return;
 
@@ -40,141 +44,279 @@ const ProjectCard = ({
         animationContextRef.current.revert();
       }
     };
-  }, []); // Only run once on mount
+  }, []);
 
-  // Hover animation
-  useEffect(() => {
-    if (!imageRef.current) return;
+  // Handle mouse enter - ULTRA SMOOTH hover effect
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+
+    if (!imageRef.current || !cardRef.current) return;
 
     const ctx = gsap.context(() => {
-      if (isHovered) {
-        gsap.to(imageRef.current, {
-          scale: 1.05,
-          duration: 0.6,
+      // Create timeline for synchronized animations
+      const tl = gsap.timeline({
+        defaults: {
           ease: "power2.out",
-        });
-      } else {
-        gsap.to(imageRef.current, {
-          scale: 1,
+        },
+      });
+
+      // Image scale - smooth and subtle
+      tl.to(
+        imageRef.current,
+        {
+          scale: 1.08,
           duration: 0.6,
-          ease: "power2.out",
-        });
+        },
+        0
+      );
+
+      // Title top - slide up and fade out (SMOOTH)
+      if (titleTopRef.current) {
+        tl.to(
+          titleTopRef.current,
+          {
+            y: -30,
+            opacity: 0,
+            duration: 0.4,
+          },
+          0
+        );
       }
-    }, imageRef);
+
+      // Title bottom - slide up from below (SMOOTH)
+      if (titleBottomRef.current) {
+        tl.fromTo(
+          titleBottomRef.current,
+          {
+            y: 30,
+            opacity: 0,
+          },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.4,
+          },
+          0.1 // Slight delay for smooth transition
+        );
+      }
+
+      // Cursor button - smooth scale in
+      if (cursorRef.current) {
+        tl.to(
+          cursorRef.current,
+          {
+            scale: 1,
+            opacity: 1,
+            duration: 0.3,
+          },
+          0.15
+        );
+      }
+    }, cardRef);
 
     return () => ctx.revert();
-  }, [isHovered]);
+  };
+
+  // Handle mouse leave - ULTRA SMOOTH reverse animation
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+
+    if (!imageRef.current || !cardRef.current) return;
+
+    const ctx = gsap.context(() => {
+      // Create timeline for synchronized reverse animations
+      const tl = gsap.timeline({
+        defaults: {
+          ease: "power2.out",
+        },
+      });
+
+      // Reset image - smooth scale back
+      tl.to(
+        imageRef.current,
+        {
+          scale: 1,
+          duration: 0.6,
+        },
+        0
+      );
+
+      // Hide cursor button first - smooth fade out
+      if (cursorRef.current) {
+        tl.to(
+          cursorRef.current,
+          {
+            scale: 0.8,
+            opacity: 0,
+            duration: 0.25,
+          },
+          0
+        );
+      }
+
+      // Title bottom - slide down and fade out (SMOOTH)
+      if (titleBottomRef.current) {
+        tl.to(
+          titleBottomRef.current,
+          {
+            y: 30,
+            opacity: 0,
+            duration: 0.4,
+          },
+          0.1
+        );
+      }
+
+      // Title top - slide back down and fade in (SMOOTH)
+      if (titleTopRef.current) {
+        tl.to(
+          titleTopRef.current,
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.4,
+          },
+          0.15
+        );
+      }
+    }, cardRef);
+
+    return () => ctx.revert();
+  };
+
+  // Track cursor position
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current || !cursorRef.current) return;
+
+    const rect = cardRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Smooth cursor follow with GSAP
+    gsap.to(cursorRef.current, {
+      x: x,
+      y: y,
+      duration: 0.3,
+      ease: "power2.out",
+    });
+  };
 
   return (
     <div
       ref={cardRef}
-      className="group cursor-pointer"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      style={{ opacity: disableAnimation ? 0 : 1 }} // Start invisible if parent controls animation
+      className="group cursor-none relative transform-gpu"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onMouseMove={handleMouseMove}
+      style={{ opacity: disableAnimation ? 0 : 1 }}
     >
-      {/* Image Container */}
-      <div className="relative w-full aspect-[4/3] overflow-hidden rounded-lg bg-background mb-4">
+      {/* Image Container - Bigger Square Format */}
+      <div className="relative w-full aspect-square overflow-hidden bg-background mb-6 rounded-sm">
         <div
           ref={imageRef}
-          className="w-full h-full"
+          className="w-full h-full transform-gpu"
           style={{
             backgroundImage: `url(${project.thumbnailUrl})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
+            transformOrigin: "center center",
+            willChange: "transform",
           }}
         />
 
-        {/* Overlay on hover */}
+        {/* Custom Cursor - "View Case" Button - Smaller Size */}
         <div
-          className={`
-            absolute inset-0 bg-background/80 
-            transition-opacity duration-500
-            ${isHovered ? "opacity-100" : "opacity-0"}
-          `}
+          ref={cursorRef}
+          className="absolute pointer-events-none z-10 cursor-element"
+          style={{
+            left: 0,
+            top: 0,
+            transform: "translate(-50%, -50%)",
+            opacity: 0,
+            scale: 0,
+          }}
         >
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="font-centsbook text-whiteText text-lg">
-              View Project →
+          <div className="px-4 py-2 bg-whiteText rounded-full flex items-center gap-2 shadow-xl">
+            <span className="font-centsbook text-background text-xs font-medium whitespace-nowrap">
+              View Case
+            </span>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 16 16"
+              fill="none"
+              className="text-background"
+            >
+              <path
+                d="M3 8H13M13 8L8 3M13 8L8 13"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      {/* Content - Title with ULTRA SMOOTH Animation */}
+      <div className="space-y-3">
+        {/* Title Container with overflow hidden for smooth animation */}
+        <div className="relative overflow-hidden h-[2.5rem] md:h-[3rem] lg:h-[3.5rem]">
+          {/* Top Title - Default State (White, Bold) */}
+          <div
+            ref={titleTopRef}
+            className="absolute inset-0 flex items-baseline gap-3 flex-wrap transform-gpu"
+            style={{ willChange: "transform, opacity" }}
+          >
+            <h3 className="font-centsbook text-whiteText text-xl md:text-2xl lg:text-3xl font-bold leading-tight">
+              {project.title}
+            </h3>
+            <span className="font-centsbook text-whiteText text-xl md:text-2xl lg:text-3xl font-bold leading-tight">
+              -
+            </span>
+            <span className="font-centsbook text-whiteText text-xl md:text-2xl lg:text-3xl font-bold leading-tight uppercase">
+              {project.projectType}
+            </span>
+          </div>
+
+          {/* Bottom Title - Hover State (Gray, Bold) */}
+          <div
+            ref={titleBottomRef}
+            className="absolute inset-0 flex items-baseline gap-3 flex-wrap transform-gpu"
+            style={{
+              willChange: "transform, opacity",
+              opacity: 0,
+              transform: "translateY(30px)",
+            }}
+          >
+            <h3 className="font-centsbook text-grayText text-xl md:text-2xl lg:text-3xl font-bold leading-tight">
+              {project.title}
+            </h3>
+            <span className="font-centsbook text-grayText text-xl md:text-2xl lg:text-3xl font-bold leading-tight">
+              -
+            </span>
+            <span className="font-centsbook text-grayText text-xl md:text-2xl lg:text-3xl font-bold leading-tight uppercase">
+              {project.projectType}
             </span>
           </div>
         </div>
 
-        {/* Project Type Badge */}
-        <div className="absolute top-4 right-4 px-3 py-1 bg-whiteText/10 backdrop-blur-sm rounded-full">
-          <span className="font-centsbook text-whiteText text-xs uppercase tracking-wider">
-            {project.projectType}
-          </span>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="space-y-2">
-        {/* Title */}
-        <h3 className="font-ogg text-whiteText text-2xl md:text-3xl group-hover:text-grayText transition-colors duration-300">
-          {project.title}
-        </h3>
-
-        {/* Description */}
-        <p className="font-centsbook text-grayText text-sm md:text-base line-clamp-2">
-          {project.description}
-        </p>
-
-        {/* Tech Stack */}
-        {project.techStack && project.techStack.length > 0 && (
-          <div className="flex flex-wrap gap-2 pt-2">
-            {project.techStack.slice(0, 4).map((tech) => (
-              <div
-                key={tech._id}
-                className="flex items-center gap-2 px-3 py-1 bg-background rounded-full"
-              >
-                {tech.imageUrl && (
-                  <img
-                    src={tech.imageUrl}
-                    alt={tech.name}
-                    className="w-4 h-4 object-contain"
-                  />
-                )}
-                <span className="font-centsbook text-whiteText/80 text-xs">
-                  {tech.name}
-                </span>
-              </div>
-            ))}
-            {project.techStack.length > 4 && (
-              <div className="px-3 py-1 bg-background rounded-full">
-                <span className="font-centsbook text-whiteText/60 text-xs">
-                  +{project.techStack.length - 4}
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Links */}
-        <div className="flex gap-4 pt-2">
-          {project.projectUrl && (
-            <a
-              href={project.projectUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-centsbook text-whiteText/60 hover:text-whiteText text-sm transition-colors duration-300"
-              onClick={(e) => e.stopPropagation()}
-            >
-              Live Site ↗
-            </a>
-          )}
-          {project.githubUrl && (
+        {/* GitHub Link Only */}
+        {project.githubUrl && (
+          <div className="pt-2">
             <a
               href={project.githubUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-centsbook text-whiteText/60 hover:text-whiteText text-sm transition-colors duration-300"
+              className="font-centsbook text-grayText hover:text-whiteText text-sm transition-colors duration-300 cursor-pointer inline-block"
               onClick={(e) => e.stopPropagation()}
             >
               GitHub ↗
             </a>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
