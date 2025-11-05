@@ -1,5 +1,5 @@
-// components/work/ProjectCard.tsx - Optimized with Ultra Smooth Title Animation
-import { useEffect, useRef, useState } from "react";
+// components/fragments/work/ProjectCard.tsx — Optimized for 2 Column Grid
+import { useLayoutEffect, useRef, useState, useCallback } from "react";
 import gsap from "gsap";
 import type { Project } from "../../../lib/types/project";
 
@@ -19,199 +19,110 @@ const ProjectCard = ({
   const cursorRef = useRef<HTMLDivElement>(null);
   const titleTopRef = useRef<HTMLDivElement>(null);
   const titleBottomRef = useRef<HTMLDivElement>(null);
+  const titleWrapRef = useRef<HTMLDivElement>(null);
 
-  const [, setIsHovered] = useState(false);
-  const animationContextRef = useRef<gsap.Context | null>(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const tlRef = useRef<gsap.core.Timeline | null>(null);
+  const quickRef = useRef<{
+    x: (v: number) => void;
+    y: (v: number) => void;
+  } | null>(null);
 
-  // Only animate on mount if not disabled
-  useEffect(() => {
-    if (disableAnimation || !cardRef.current) return;
-
+  // Mount animation
+  useLayoutEffect(() => {
+    if (!cardRef.current || disableAnimation) return;
     const ctx = gsap.context(() => {
       gsap.from(cardRef.current, {
         opacity: 0,
         y: 60,
         duration: 0.8,
-        delay: index * 0.1,
+        delay: index * 0.08,
         ease: "power3.out",
+        force3D: true,
       });
     }, cardRef);
+    return () => ctx.revert();
+  }, [index, disableAnimation]);
 
-    animationContextRef.current = ctx;
-
-    return () => {
-      if (animationContextRef.current) {
-        animationContextRef.current.revert();
-      }
-    };
-  }, []);
-
-  // Handle mouse enter - ULTRA SMOOTH hover effect
-  const handleMouseEnter = () => {
-    setIsHovered(true);
-
-    if (!imageRef.current || !cardRef.current) return;
+  // Build hover timeline
+  useLayoutEffect(() => {
+    if (!cardRef.current || disableAnimation) return;
 
     const ctx = gsap.context(() => {
-      // Create timeline for synchronized animations
       const tl = gsap.timeline({
-        defaults: {
-          ease: "power2.out",
-        },
+        paused: true,
+        defaults: { ease: "power2.out" },
       });
 
-      // Image scale - smooth and subtle
-      tl.to(
-        imageRef.current,
-        {
-          scale: 1.08,
-          duration: 0.6,
-        },
-        0
-      );
-
-      // Title top - slide up and fade out (SMOOTH)
-      if (titleTopRef.current) {
-        tl.to(
-          titleTopRef.current,
-          {
-            y: -30,
-            opacity: 0,
-            duration: 0.4,
-          },
-          0
-        );
+      if (imageRef.current) {
+        tl.to(imageRef.current, { scale: 1.08, duration: 0.6 }, 0);
       }
-
-      // Title bottom - slide up from below (SMOOTH)
+      if (titleTopRef.current) {
+        tl.to(titleTopRef.current, { y: -14, opacity: 0, duration: 0.38 }, 0);
+      }
       if (titleBottomRef.current) {
         tl.fromTo(
           titleBottomRef.current,
-          {
-            y: 30,
-            opacity: 0,
-          },
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.4,
-          },
-          0.1 // Slight delay for smooth transition
+          { y: 14, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.38 },
+          0.06
         );
       }
-
-      // Cursor button - smooth scale in
       if (cursorRef.current) {
-        tl.to(
+        tl.fromTo(
           cursorRef.current,
-          {
-            scale: 1,
-            opacity: 1,
-            duration: 0.3,
-          },
-          0.15
-        );
-      }
-    }, cardRef);
-
-    return () => ctx.revert();
-  };
-
-  // Handle mouse leave - ULTRA SMOOTH reverse animation
-  const handleMouseLeave = () => {
-    setIsHovered(false);
-
-    if (!imageRef.current || !cardRef.current) return;
-
-    const ctx = gsap.context(() => {
-      // Create timeline for synchronized reverse animations
-      const tl = gsap.timeline({
-        defaults: {
-          ease: "power2.out",
-        },
-      });
-
-      // Reset image - smooth scale back
-      tl.to(
-        imageRef.current,
-        {
-          scale: 1,
-          duration: 0.6,
-        },
-        0
-      );
-
-      // Hide cursor button first - smooth fade out
-      if (cursorRef.current) {
-        tl.to(
-          cursorRef.current,
-          {
-            scale: 0.8,
-            opacity: 0,
-            duration: 0.25,
-          },
-          0
-        );
-      }
-
-      // Title bottom - slide down and fade out (SMOOTH)
-      if (titleBottomRef.current) {
-        tl.to(
-          titleBottomRef.current,
-          {
-            y: 30,
-            opacity: 0,
-            duration: 0.4,
-          },
+          { scale: 0, opacity: 0 },
+          { scale: 1, opacity: 1, duration: 0.28 },
           0.1
         );
+        quickRef.current = {
+          x: gsap.quickTo(cursorRef.current, "x", {
+            duration: 0.18,
+            ease: "power2.out",
+          }),
+          y: gsap.quickTo(cursorRef.current, "y", {
+            duration: 0.18,
+            ease: "power2.out",
+          }),
+        };
       }
 
-      // Title top - slide back down and fade in (SMOOTH)
-      if (titleTopRef.current) {
-        tl.to(
-          titleTopRef.current,
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.4,
-          },
-          0.15
-        );
-      }
+      tlRef.current = tl;
     }, cardRef);
 
-    return () => ctx.revert();
-  };
+    return () => {
+      ctx.revert();
+      tlRef.current?.kill();
+    };
+  }, [disableAnimation]);
 
-  // Track cursor position
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current || !cursorRef.current) return;
+  const play = useCallback(() => {
+    setIsHovered(true);
+    tlRef.current?.play();
+  }, []);
 
-    const rect = cardRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+  const reverse = useCallback(() => {
+    setIsHovered(false);
+    tlRef.current?.reverse();
+  }, []);
 
-    // Smooth cursor follow with GSAP
-    gsap.to(cursorRef.current, {
-      x: x,
-      y: y,
-      duration: 0.3,
-      ease: "power2.out",
-    });
+  const handleMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current || !quickRef.current || !isHovered) return;
+    const r = cardRef.current.getBoundingClientRect();
+    quickRef.current.x(e.clientX - r.left);
+    quickRef.current.y(e.clientY - r.top);
   };
 
   return (
     <div
       ref={cardRef}
-      className="group cursor-none relative transform-gpu"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onMouseMove={handleMouseMove}
-      style={{ opacity: disableAnimation ? 0 : 1 }}
+      className="group relative md:cursor-none w-full"
+      onMouseEnter={play}
+      onMouseLeave={reverse}
+      onMouseMove={handleMove}
     >
-      {/* Image Container - Bigger Square Format */}
-      <div className="relative w-full aspect-square overflow-hidden bg-background mb-6 rounded-sm">
+      {/* Image - Aspect ratio untuk 2 kolom grid */}
+      <div className="relative w-full aspect-[4/3] overflow-hidden rounded-lg shadow-[0_10px_40px_rgba(0,0,0,0.3)] mb-4">
         <div
           ref={imageRef}
           className="w-full h-full transform-gpu"
@@ -220,30 +131,31 @@ const ProjectCard = ({
             backgroundSize: "cover",
             backgroundPosition: "center",
             backgroundRepeat: "no-repeat",
-            transformOrigin: "center center",
             willChange: "transform",
+            backfaceVisibility: "hidden",
+            transform: "translateZ(0)",
           }}
         />
-
-        {/* Custom Cursor - "View Case" Button - Smaller Size */}
+        {/* View Case cursor */}
         <div
           ref={cursorRef}
-          className="absolute pointer-events-none z-10 cursor-element"
+          className="absolute pointer-events-none z-10 hidden md:block"
           style={{
             left: 0,
             top: 0,
             transform: "translate(-50%, -50%)",
             opacity: 0,
-            scale: 0,
+            willChange: "transform,opacity",
+            backfaceVisibility: "hidden",
           }}
         >
-          <div className="px-4 py-2 bg-whiteText rounded-full flex items-center gap-2 shadow-xl">
-            <span className="font-centsbook text-background text-xs font-medium whitespace-nowrap">
+          <div className="px-6 py-3 bg-whiteText rounded-full flex items-center gap-2 shadow-xl">
+            <span className="font-centsbook text-background text-sm font-medium whitespace-nowrap">
               View Case
             </span>
             <svg
-              width="12"
-              height="12"
+              width="14"
+              height="14"
               viewBox="0 0 16 16"
               fill="none"
               className="text-background"
@@ -260,57 +172,66 @@ const ProjectCard = ({
         </div>
       </div>
 
-      {/* Content - Title with ULTRA SMOOTH Animation */}
-      <div className="space-y-3">
-        {/* Title Container with overflow hidden for smooth animation */}
-        <div className="relative overflow-hidden h-[2.5rem] md:h-[3rem] lg:h-[3.5rem]">
-          {/* Top Title - Default State (White, Bold) */}
+      {/* Titles - Lebih compact untuk grid */}
+      <div
+        ref={titleWrapRef}
+        className="space-y-1"
+        onMouseEnter={play}
+        onMouseLeave={reverse}
+      >
+        <div
+          className="relative overflow-hidden"
+          style={{ height: "clamp(1.75rem, 4vw, 2.25rem)" }}
+        >
+          {/* default */}
           <div
             ref={titleTopRef}
-            className="absolute inset-0 flex items-baseline gap-3 flex-wrap transform-gpu"
-            style={{ willChange: "transform, opacity" }}
+            className="absolute inset-0 flex items-baseline gap-2 flex-wrap transform-gpu"
+            style={{
+              willChange: "transform,opacity",
+              backfaceVisibility: "hidden",
+            }}
           >
-            <h3 className="font-centsbook text-whiteText text-xl md:text-2xl lg:text-3xl font-bold leading-tight">
+            <h3 className="font-centsbook text-whiteText text-base md:text-lg font-bold leading-tight uppercase tracking-wide">
               {project.title}
             </h3>
-            <span className="font-centsbook text-whiteText text-xl md:text-2xl lg:text-3xl font-bold leading-tight">
-              -
+            <span className="font-centsbook text-whiteText/60 text-base md:text-lg font-bold leading-tight">
+              —
             </span>
-            <span className="font-centsbook text-whiteText text-xl md:text-2xl lg:text-3xl font-bold leading-tight uppercase">
+            <span className="font-centsbook text-whiteText/90 text-base md:text-lg font-bold leading-tight uppercase tracking-wide">
               {project.projectType}
             </span>
           </div>
-
-          {/* Bottom Title - Hover State (Gray, Bold) */}
+          {/* hover state */}
           <div
             ref={titleBottomRef}
-            className="absolute inset-0 flex items-baseline gap-3 flex-wrap transform-gpu"
+            className="absolute inset-0 flex items-baseline gap-2 flex-wrap transform-gpu"
             style={{
-              willChange: "transform, opacity",
+              willChange: "transform,opacity",
               opacity: 0,
-              transform: "translateY(30px)",
+              transform: "translate3d(0,14px,0)",
+              backfaceVisibility: "hidden",
             }}
           >
-            <h3 className="font-centsbook text-grayText text-xl md:text-2xl lg:text-3xl font-bold leading-tight">
+            <h3 className="font-centsbook text-grayText text-base md:text-lg font-bold leading-tight uppercase tracking-wide">
               {project.title}
             </h3>
-            <span className="font-centsbook text-grayText text-xl md:text-2xl lg:text-3xl font-bold leading-tight">
-              -
+            <span className="font-centsbook text-grayText/60 text-base md:text-lg font-bold leading-tight">
+              —
             </span>
-            <span className="font-centsbook text-grayText text-xl md:text-2xl lg:text-3xl font-bold leading-tight uppercase">
+            <span className="font-centsbook text-grayText/90 text-base md:text-lg font-bold leading-tight uppercase tracking-wide">
               {project.projectType}
             </span>
           </div>
         </div>
 
-        {/* GitHub Link Only */}
         {project.githubUrl && (
-          <div className="pt-2">
+          <div className="pt-1">
             <a
               href={project.githubUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-centsbook text-grayText hover:text-whiteText text-sm transition-colors duration-300 cursor-pointer inline-block"
+              className="font-centsbook text-grayText hover:text-whiteText text-sm transition-colors duration-300 inline-block"
               onClick={(e) => e.stopPropagation()}
             >
               GitHub ↗

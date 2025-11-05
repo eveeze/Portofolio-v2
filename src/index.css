@@ -339,3 +339,35 @@ body.preloader-active {
   transform-origin: left;
   transition: transform 400ms ease-out;
 }
+
+.filter-button {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform, border-color, background-color;
+  perspective: 1000px;
+}
+
+/* Enhanced dropdown container optimization with smooth height expansion */
+.filter-button+div {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform, opacity, height, border-radius;
+  perspective: 1000px;
+  transform-origin: top center;
+  contain: layout style paint;
+  /* Smooth border-radius morphing */
+  transition: border-radius 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Smooth item animations */
+.filter-button+div button {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+  contain: layout style paint;
+}
+
+/* Ultra smooth transitions for filter items */
+.filter-button+div button span {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}

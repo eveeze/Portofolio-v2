@@ -7,7 +7,7 @@ const Home = () => {
     <div className="w-full">
       {/* Hero Section - Full screen */}
       <section className="w-full h-screen relative overflow-hidden">
-        <div className="h-full p-4 md:p-8">
+        <div className="h-full p-4 md:p-6">
           <Hero />
         </div>
       </section>
