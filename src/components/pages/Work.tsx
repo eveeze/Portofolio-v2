@@ -1,4 +1,4 @@
-// pages/Work.tsx — 2 Column Grid Layout with Hero Aligned Right
+// pages/Work.tsx — 2 Column Grid Layout with Filter Left, Hero Right
 import { useState, useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -141,9 +141,22 @@ const Work = () => {
   return (
     <section className="w-full min-h-screen bg-background2 py-20 md:py-32">
       {/* Container - LEBIH LEBAR, SPACE KE TEPI LEBIH TIPIS */}
-      <div className="mx-auto" style={{ width: "clamp(320px, 98vw, 1600px)" }}>
-        {/* Header / Hero - TETAP ALIGNED KE KANAN SEPERTI KODE LAMA */}
-        <div ref={headerRef} className="mb-16 md:mb-24">
+      <div
+        className="mx-auto px-2 md:px-3 lg:px-4"
+        style={{ width: "clamp(320px, 98vw, 1600px)" }}
+      >
+        {/* Header / Hero - FILTER KIRI, HERO KANAN */}
+        <div ref={headerRef} className="mb-12 md:mb-16">
+          {/* Filter di kiri atas */}
+          <div className="mb-8 md:mb-0">
+            <ProjectFilter
+              activeFilter={activeFilter}
+              onFilterChange={setActiveFilter}
+              projectCounts={projectCounts}
+            />
+          </div>
+
+          {/* Hero di kanan */}
           <div className="flex flex-col items-end text-left mb-8">
             <h1
               ref={titleRef}
@@ -166,24 +179,19 @@ const Work = () => {
           </div>
           <p
             ref={subtitleRef}
-            className="font-centsbook text-whiteText text-base md:text-lg mb-12 max-w-3xl ml-auto text-left"
+            className="font-centsbook text-whiteText text-base md:text-lg max-w-3xl ml-auto text-left"
             style={{ opacity: 1, transform: "translateY(0)" }}
           >
             Crafting seamless digital experiences, from concept to deployment.
             Explore my case studies below.
           </p>
-          <ProjectFilter
-            activeFilter={activeFilter}
-            onFilterChange={setActiveFilter}
-            projectCounts={projectCounts}
-          />
         </div>
 
-        {/* Grid - 2 KOLOM, GAP LEBIH RAPAT */}
+        {/* Grid - 2 KOLOM, GAP LEBIH RAPAT, IMAGES FULLY VISIBLE */}
         {projects?.length ? (
           <div
             ref={gridRef}
-            className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6"
+            className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8"
           >
             {projects?.map((project, index) => (
               <ProjectCard
@@ -199,46 +207,6 @@ const Work = () => {
             <p className="font-centsbook text-grayText text-lg">
               No projects found with the selected filter.
             </p>
-          </div>
-        )}
-
-        {/* Stats - Footer aligned & centered */}
-        {stats && (
-          <div className="mt-32 pt-16 border-t border-whiteText/10">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 max-w-4xl mx-auto">
-              <div className="text-center">
-                <div className="font-ogg text-whiteText text-4xl md:text-5xl mb-2">
-                  {stats.totalProjects}
-                </div>
-                <div className="font-centsbook text-grayText text-sm">
-                  Total Projects
-                </div>
-              </div>
-              <div className="text-center">
-                <div className="font-ogg text-whiteText text-4xl md:text-5xl mb-2">
-                  {stats.totalImages}
-                </div>
-                <div className="font-centsbook text-grayText text-sm">
-                  Total Images
-                </div>
-              </div>
-              <div className="text-center">
-                <div className="font-ogg text-whiteText text-4xl md:text-5xl mb-2">
-                  {stats.avgImagesPerProject}
-                </div>
-                <div className="font-centsbook text-grayText text-sm">
-                  Avg per Project
-                </div>
-              </div>
-              <div className="text-center">
-                <div className="font-ogg text-whiteText text-4xl md:text-5xl mb-2">
-                  {Object.keys(stats.projectsByType).length}
-                </div>
-                <div className="font-centsbook text-grayText text-sm">
-                  Categories
-                </div>
-              </div>
-            </div>
           </div>
         )}
       </div>

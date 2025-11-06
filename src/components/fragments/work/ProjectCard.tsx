@@ -51,37 +51,37 @@ const ProjectCard = ({
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({
         paused: true,
-        defaults: { ease: "power2.out" },
+        defaults: { ease: "power2.inOut" },
       });
 
       if (imageRef.current) {
-        tl.to(imageRef.current, { scale: 1.08, duration: 0.6 }, 0);
+        tl.to(imageRef.current, { scale: 1.05, duration: 0.4 }, 0);
       }
       if (titleTopRef.current) {
-        tl.to(titleTopRef.current, { y: -14, opacity: 0, duration: 0.38 }, 0);
+        tl.to(titleTopRef.current, { y: -10, opacity: 0, duration: 0.25 }, 0);
       }
       if (titleBottomRef.current) {
         tl.fromTo(
           titleBottomRef.current,
-          { y: 14, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.38 },
-          0.06
+          { y: 10, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.25 },
+          0.05
         );
       }
       if (cursorRef.current) {
         tl.fromTo(
           cursorRef.current,
           { scale: 0, opacity: 0 },
-          { scale: 1, opacity: 1, duration: 0.28 },
-          0.1
+          { scale: 1, opacity: 1, duration: 0.2 },
+          0.08
         );
         quickRef.current = {
           x: gsap.quickTo(cursorRef.current, "x", {
-            duration: 0.18,
+            duration: 0.15,
             ease: "power2.out",
           }),
           y: gsap.quickTo(cursorRef.current, "y", {
-            duration: 0.18,
+            duration: 0.15,
             ease: "power2.out",
           }),
         };
@@ -122,7 +122,7 @@ const ProjectCard = ({
       onMouseMove={handleMove}
     >
       {/* Image - Aspect ratio untuk 2 kolom grid */}
-      <div className="relative w-full aspect-[4/3] overflow-hidden rounded-lg shadow-[0_10px_40px_rgba(0,0,0,0.3)] mb-4">
+      <div className="relative w-full aspect-[4/3] overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.3)] mb-4">
         <div
           ref={imageRef}
           className="w-full h-full transform-gpu"
@@ -195,10 +195,10 @@ const ProjectCard = ({
             <h3 className="font-centsbook text-whiteText text-base md:text-lg font-bold leading-tight uppercase tracking-wide">
               {project.title}
             </h3>
-            <span className="font-centsbook text-whiteText/60 text-base md:text-lg font-bold leading-tight">
+            <span className="font-centsbook text-whiteText/50 text-base md:text-lg font-bold leading-tight">
               —
             </span>
-            <span className="font-centsbook text-whiteText/90 text-base md:text-lg font-bold leading-tight uppercase tracking-wide">
+            <span className="font-centsbook text-whiteText/80 text-base md:text-lg font-bold leading-tight uppercase tracking-wide">
               {project.projectType}
             </span>
           </div>
@@ -209,35 +209,21 @@ const ProjectCard = ({
             style={{
               willChange: "transform,opacity",
               opacity: 0,
-              transform: "translate3d(0,14px,0)",
+              transform: "translate3d(0,10px,0)",
               backfaceVisibility: "hidden",
             }}
           >
-            <h3 className="font-centsbook text-grayText text-base md:text-lg font-bold leading-tight uppercase tracking-wide">
+            <h3 className="font-centsbook text-whiteText text-base md:text-lg font-bold leading-tight uppercase tracking-wide">
               {project.title}
             </h3>
-            <span className="font-centsbook text-grayText/60 text-base md:text-lg font-bold leading-tight">
+            <span className="font-centsbook text-whiteText/50 text-base md:text-lg font-bold leading-tight">
               —
             </span>
-            <span className="font-centsbook text-grayText/90 text-base md:text-lg font-bold leading-tight uppercase tracking-wide">
+            <span className="font-centsbook text-whiteText/80 text-base md:text-lg font-bold leading-tight uppercase tracking-wide">
               {project.projectType}
             </span>
           </div>
         </div>
-
-        {project.githubUrl && (
-          <div className="pt-1">
-            <a
-              href={project.githubUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-centsbook text-grayText hover:text-whiteText text-sm transition-colors duration-300 inline-block"
-              onClick={(e) => e.stopPropagation()}
-            >
-              GitHub ↗
-            </a>
-          </div>
-        )}
       </div>
     </div>
   );
