@@ -1,130 +1,104 @@
 import React, { useEffect, useRef } from "react";
 import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
 
 const Hero: React.FC = () => {
-  const topHeaderRefs = useRef<HTMLHeadingElement[]>([]);
+  const heroWrapperRef = useRef<HTMLDivElement>(null);
+
+  const topHeaderRefs = useRef<(HTMLHeadingElement | null)[]>([]);
   const fullstackTitleRef = useRef<HTMLHeadingElement>(null);
   const developerTitleRef = useRef<HTMLHeadingElement>(null);
   const profileImageRef = useRef<HTMLDivElement>(null);
-  const leftDescriptionRef = useRef<HTMLDivElement>(null);
-  const rightBrandRef = useRef<HTMLHeadingElement>(null);
+  const quoteRef = useRef<HTMLDivElement>(null);
+  const quoteContainerRef = useRef<HTMLDivElement>(null);
+
+  // Helper array-ref (supaya rapi di TS)
+  const setTopHeaderRef =
+    (index: number) => (el: HTMLHeadingElement | null) => {
+      topHeaderRefs.current[index] = el;
+    };
 
   useEffect(() => {
-    // === FUNGSI-FUNGSI HELPER (SESUAI KODE LAMA ANDA) ===
-    const splitTextIntoChars = (element: HTMLElement) => {
-      const text = element.textContent || "";
-      element.innerHTML = "";
-      const charElements: HTMLSpanElement[] = [];
-      const words = text.split(" ");
-      words.forEach((word, wordIndex) => {
-        const wordContainer = document.createElement("span");
-        wordContainer.className = "word inline-block";
-        wordContainer.style.overflow = "hidden";
-        wordContainer.style.display = "inline-block";
+    const splitChars = (el: HTMLElement) => {
+      const text = el.textContent || "";
+      el.innerHTML = "";
+      const chars: HTMLSpanElement[] = [];
 
-        word.split("").forEach((char) => {
+      text.split(" ").forEach((word, wIndex, arr) => {
+        const wrap = document.createElement("span");
+        wrap.style.display = "inline-block";
+        wrap.style.overflow = "hidden";
+
+        word.split("").forEach((c) => {
           const span = document.createElement("span");
-          span.textContent = char;
+          span.textContent = c;
           span.className = "char inline-block";
-          wordContainer.appendChild(span);
-          charElements.push(span);
+          wrap.appendChild(span);
+          chars.push(span);
         });
-        element.appendChild(wordContainer);
 
-        // FIXED: Add actual space between words
-        if (wordIndex < words.length - 1) {
-          const spaceSpan = document.createElement("span");
-          spaceSpan.textContent = " ";
-          spaceSpan.className = "char inline-block";
-          element.appendChild(spaceSpan);
-          charElements.push(spaceSpan);
+        el.appendChild(wrap);
+
+        if (wIndex < arr.length - 1) {
+          const space = document.createElement("span");
+          space.textContent = " ";
+          space.className = "char inline-block";
+          el.appendChild(space);
+          chars.push(space);
         }
       });
-      return charElements;
+
+      return chars;
     };
 
-    const getDescriptionParagraphs = (containerElement: HTMLElement) => {
-      const paragraphs = containerElement.querySelectorAll("p");
-      const paragraphElements: HTMLParagraphElement[] = [];
-      paragraphs.forEach((p) => {
-        const paragraphContainer = document.createElement("div");
-        paragraphContainer.className = "paragraph-container";
-        paragraphContainer.style.overflow = "hidden";
-        p.parentNode?.insertBefore(paragraphContainer, p);
-        paragraphContainer.appendChild(p);
-        paragraphElements.push(p as HTMLParagraphElement);
-      });
-      return paragraphElements;
-    };
-
-    // === PERSIAPAN SEMUA ELEMEN UNTUK ANIMASI ===
-    const topHeaderChars = topHeaderRefs.current.flatMap((el) =>
-      el ? splitTextIntoChars(el) : []
+    // ==== Prepare text ====
+    const headerChars = topHeaderRefs.current.flatMap((el) =>
+      el ? splitChars(el) : []
     );
-
-    // Split title chars menjadi dua array terpisah
-    const fullstackTitleChars = fullstackTitleRef.current
-      ? splitTextIntoChars(fullstackTitleRef.current)
+    const fullstackChars = fullstackTitleRef.current
+      ? splitChars(fullstackTitleRef.current)
       : [];
-    const developerTitleChars = developerTitleRef.current
-      ? splitTextIntoChars(developerTitleRef.current)
+    const developerChars = developerTitleRef.current
+      ? splitChars(developerTitleRef.current)
       : [];
 
-    const leftDescriptionParagraphs = leftDescriptionRef.current
-      ? getDescriptionParagraphs(leftDescriptionRef.current)
-      : [];
-    const rightBrandChars = rightBrandRef.current
-      ? splitTextIntoChars(rightBrandRef.current)
-      : [];
+    // ==== Entrance animation (tetap sama seperti versi lama) ====
+    const tl = gsap.timeline({ delay: 0.3 });
 
-    // === TIMELINE ANIMASI MASUK (ENTRANCE ANIMATION) DARI KODE LAMA ANDA ===
-    const entranceTl = gsap.timeline({ delay: 0.3 });
-
-    // Set initial states
-    gsap.set(topHeaderChars, { opacity: 0, y: "100%", force3D: true });
-    gsap.set([...fullstackTitleChars, ...developerTitleChars], {
+    gsap.set(headerChars, { opacity: 0, y: "100%", force3D: true });
+    gsap.set([...fullstackChars, ...developerChars], {
       opacity: 0,
       y: "100%",
       force3D: true,
     });
-    gsap.set(leftDescriptionParagraphs, {
-      opacity: 0,
-      y: "100%",
-      force3D: true,
-    });
-    gsap.set(rightBrandChars, { opacity: 0, y: "100%", force3D: true });
     gsap.set(profileImageRef.current, { opacity: 0, scale: 0.8 });
 
-    entranceTl
-      .to(
-        topHeaderChars,
-        {
-          opacity: 1,
-          y: "0%",
-          duration: 0.8,
-          stagger: {
-            amount: Math.min(0.02 * topHeaderChars.length, 0.8),
-            ease: "power1.out",
-          },
-          ease: "power2.out",
-          force3D: true,
-        },
-        0.2
-      )
+    tl.to(headerChars, {
+      opacity: 1,
+      y: "0%",
+      duration: 0.8,
+      stagger: {
+        amount: Math.min(0.02 * headerChars.length, 0.8),
+        ease: "power1.out",
+      },
+      ease: "power2.out",
+      force3D: true,
+    })
       .to(
         profileImageRef.current,
         { opacity: 1, scale: 1, duration: 1.2, ease: "power3.out" },
         0.6
       )
-      // Animasi FULLSTACK dulu
       .to(
-        fullstackTitleChars,
+        fullstackChars,
         {
           opacity: 1,
           y: "0%",
           duration: 0.8,
           stagger: {
-            amount: Math.min(0.02 * fullstackTitleChars.length, 0.5),
+            amount: Math.min(0.02 * fullstackChars.length, 0.5),
             ease: "power1.out",
           },
           ease: "power2.out",
@@ -133,152 +107,170 @@ const Hero: React.FC = () => {
         1.0
       )
       .to(
-        developerTitleChars,
+        developerChars,
         {
           opacity: 1,
           y: "0%",
           duration: 0.8,
           stagger: {
-            amount: Math.min(0.02 * developerTitleChars.length, 0.5),
+            amount: Math.min(0.02 * developerChars.length, 0.5),
             ease: "power1.out",
           },
           ease: "power2.out",
           force3D: true,
         },
         1.4
-      )
-      .to(
-        leftDescriptionParagraphs,
-        {
-          opacity: 1,
-          y: "0%",
-          duration: 0.6,
-          stagger: { amount: 0.6, ease: "power1.out" },
-          ease: "power2.out",
-          force3D: true,
-        },
-        2.0
-      )
-      .to(
-        rightBrandChars,
-        {
-          opacity: 1,
-          y: "0%",
-          duration: 0.8,
-          stagger: {
-            amount: Math.min(0.03 * rightBrandChars.length, 0.6),
-            ease: "power1.out",
-          },
-          ease: "power2.out",
-          force3D: true,
-        },
-        2.6
       );
 
+    // ================================
+    // AUTO HEIGHT (supaya hero stay sampai quotes selesai)
+    // ================================
+    if (
+      quoteRef.current &&
+      quoteContainerRef.current &&
+      heroWrapperRef.current
+    ) {
+      const textW = quoteRef.current.scrollWidth;
+      const containerW = quoteContainerRef.current.clientWidth;
+
+      // agak diperpanjang supaya nggak cepat pindah section
+      const requiredScroll = (textW - containerW) * 1.18;
+      const totalHeight = window.innerHeight + requiredScroll;
+
+      heroWrapperRef.current.style.minHeight = `${totalHeight}px`;
+    }
+
+    // ================================
+    // SCROLLTRIGGER (horizontal + skew dengan velocity)
+    // ================================
+    let st: ScrollTrigger | null = null;
+
+    if (
+      quoteRef.current &&
+      quoteContainerRef.current &&
+      heroWrapperRef.current
+    ) {
+      const quote = quoteRef.current;
+      const container = quoteContainerRef.current;
+
+      const textWidth = quote.scrollWidth;
+      const containerWidth = container.clientWidth;
+
+      if (textWidth > containerWidth) {
+        const safetyPadding = containerWidth * 0.35;
+        const effectiveWidth = textWidth - containerWidth + safetyPadding;
+        const maxMove = -effectiveWidth;
+
+        let smoothVelocity = 0;
+        const smoothFactor = 0.22; // stabil tapi responsif
+
+        st = ScrollTrigger.create({
+          trigger: heroWrapperRef.current,
+          start: "top top",
+          end: `+=${effectiveWidth + window.innerHeight * 0.8}`,
+          scrub: 1,
+
+          onUpdate: (self) => {
+            const p = self.progress;
+
+            // Horizontal movement linear → stabil
+            gsap.set(quote, { x: maxMove * p });
+
+            // Velocity-based skew
+            const rawV = self.getVelocity() / 52;
+            smoothVelocity += (rawV - smoothVelocity) * smoothFactor;
+
+            const skew = gsap.utils.clamp(-18, 18, smoothVelocity);
+
+            gsap.to(quote, {
+              skewX: skew,
+              duration: 0.15,
+              ease: "linear",
+              overwrite: true,
+            });
+          },
+        });
+      }
+    }
+
     return () => {
-      entranceTl.kill();
+      tl.kill();
+      if (st) st.kill();
     };
   }, []);
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      <div className="flex flex-col h-full px-4 sm:px-8 lg:px-12">
-        {/* Top Header */}
-        <div className="flex justify-between items-start pt-8 sm:pt-12 lg:pt-16">
-          <h1
-            ref={(el) => {
-              if (el) topHeaderRefs.current[0] = el;
-            }}
-            className="text-2xl sm:text-3xl lg:text-4xl font-ogg font-bold tracking-tighter text-grayText leading-tight"
-          >
-            A
-          </h1>
-          <h1
-            ref={(el) => {
-              if (el) topHeaderRefs.current[1] = el;
-            }}
-            className="text-2xl sm:text-3xl lg:text-4xl font-ogg font-bold tracking-tighter text-grayText leading-tight"
-          >
-            SERIOUSLY
-          </h1>
-          <h1
-            ref={(el) => {
-              if (el) topHeaderRefs.current[2] = el;
-            }}
-            className="text-2xl sm:text-3xl lg:text-4xl font-ogg font-bold tracking-tighter text-grayText leading-tight"
-          >
-            GOOD
-          </h1>
-        </div>
-
-        {/* Main Title - Inline berdampingan */}
-        <div className="flex justify-center items-center relative z-10 mt-4 sm:mt-0 lg:-mt-8 flex-wrap">
-          <h1
-            ref={fullstackTitleRef}
-            className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-ogg font-bold tracking-normal text-whiteText leading-tight text-center mr-4 sm:mr-6 lg:mr-8"
-          >
-            FULLSTACK
-          </h1>
-          <h1
-            ref={developerTitleRef}
-            className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-ogg font-bold tracking-normal text-whiteText leading-tight text-center"
-          >
-            DEVELOPER
-          </h1>
-        </div>
-
-        {/* Profile Image */}
-        <div className="absolute inset-0 flex items-center justify-center z-0">
-          <div
-            ref={profileImageRef}
-            className="w-48 h-48 sm:w-64 sm:h-64 md:w-72 md:h-72 lg:w-80 lg:h-80 overflow-hidden sm:rounded-none"
-          >
-            <img
-              src="/images/pp.jpg"
-              alt="Profile"
-              className="w-full h-full object-cover"
-            />
+    <div ref={heroWrapperRef} className="relative bg-background2">
+      {/* Sticky hero supaya scroll ngerjain quotes dulu */}
+      <div className="sticky top-0 h-screen overflow-hidden">
+        <div className="flex flex-col h-full px-4 sm:px-8 lg:px-12">
+          {/* Top Header — ukuran & style dikembalikan seperti kode lama */}
+          <div className="flex justify-between items-start pt-8 sm:pt-12 lg:pt-16">
+            <h1
+              ref={setTopHeaderRef(0)}
+              className="text-2xl sm:text-3xl lg:text-4xl font-ogg font-bold tracking-tighter text-grayText leading-tight"
+            >
+              A
+            </h1>
+            <h1
+              ref={setTopHeaderRef(1)}
+              className="text-2xl sm:text-3xl lg:text-4xl font-ogg font-bold tracking-tighter text-grayText leading-tight"
+            >
+              SERIOUSLY
+            </h1>
+            <h1
+              ref={setTopHeaderRef(2)}
+              className="text-2xl sm:text-3xl lg:text-4xl font-ogg font-bold tracking-tighter text-grayText leading-tight"
+            >
+              GOOD
+            </h1>
           </div>
-        </div>
 
-        {/* Left Description */}
-        <div
-          ref={leftDescriptionRef}
-          className="absolute left-4 sm:left-8 lg:left-12 max-w-xs z-10"
-          style={{ bottom: "3rem" }}
-        >
-          <p className="text-sm sm:text-base md:text-lg font-centsbook text-grayText tracking-tighter leading-tight mb-0">
-            I AM TITO ZAKI SAPUTRO
-          </p>
-          <p className="text-sm sm:text-base md:text-lg font-centsbook text-grayText tracking-tighter leading-tight mb-0">
-            ALSO KNOWN AS EVEEZE
-          </p>
-          <p className="text-sm sm:text-base md:text-lg font-centsbook text-grayText tracking-tighter leading-tight mb-0">
-            SPECIALISED IN MODERN
-          </p>
-          <p className="text-sm sm:text-base md:text-lg font-centsbook text-grayText tracking-tighter leading-tight mb-0">
-            FRONTEND AND BACKEND
-          </p>
-          <p className="text-sm sm:text-base md:text-lg font-centsbook text-grayText tracking-tighter leading-tight mb-0">
-            TECHNOLOGIES TO CREATE
-          </p>
-          <p className="text-sm sm:text-base md:text-lg font-centsbook text-grayText tracking-tighter leading-tight mb-0">
-            SEAMLESS DIGITAL EXPERIENCES.
-          </p>
-        </div>
+          {/* Main Title - ukuran & responsive sama seperti kode lama */}
+          <div className="flex justify-center items-center relative z-10 mt-4 sm:mt-0 lg:-mt-8 flex-wrap">
+            <h1
+              ref={fullstackTitleRef}
+              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-ogg font-bold tracking-normal text-whiteText leading-tight text-center mr-4 sm:mr-6 lg:mr-8"
+            >
+              FULLSTACK
+            </h1>
+            <h1
+              ref={developerTitleRef}
+              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-ogg font-bold tracking-normal text-whiteText leading-tight text-center"
+            >
+              DEVELOPER
+            </h1>
+          </div>
 
-        {/* Right Brand Name */}
-        <div
-          className="absolute right-4 sm:right-8 lg:right-12 z-10"
-          style={{ bottom: "2.9rem" }}
-        >
-          <h1
-            ref={rightBrandRef}
-            className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[160px] text-whiteText font-ogg leading-none"
-            style={{ lineHeight: "0.7" }}
+          {/* Profile Image (sama seperti lama) */}
+          <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
+            <div
+              ref={profileImageRef}
+              className="w-48 h-48 sm:w-64 sm:h-64 md:w-72 md:h-72 lg:w-80 lg:h-80 overflow-hidden sm:rounded-none"
+            >
+              <img
+                src="/images/pp.jpg"
+                alt="Profile"
+                className="w-full h-full object-cover"
+              />
+            </div>
+          </div>
+
+          {/* Quotes */}
+          <div
+            ref={quoteContainerRef}
+            className="absolute bottom-12 sm:bottom-16 lg:bottom-20 left-0 right-0 w-full overflow-hidden px-4 sm:px-8 lg:px-12 z-10"
           >
-            EVEEZE
-          </h1>
+            <div
+              ref={quoteRef}
+              className="inline-block whitespace-nowrap will-change-transform
+                         text-4xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[160px]
+                         text-whiteText font-ogg font-bold uppercase tracking-tight"
+              style={{ lineHeight: "1.1" }}
+            >
+              CRAFTING SYSTEMS AND INTERFACES THAT MOVE FAST AND FEEL ALIVE.
+            </div>
+          </div>
         </div>
       </div>
     </div>

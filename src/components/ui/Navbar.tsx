@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { gsap } from "gsap";
 import { SplitText } from "gsap/SplitText";
@@ -10,7 +10,7 @@ const Navbar = () => {
   const location = useLocation();
   const navRef = useRef<HTMLDivElement>(null);
   const [hasAnimatedEntrance, setHasAnimatedEntrance] = useState(false);
-  const [, setIsScrolled] = useState(false);
+  const entranceTimelineRef = useRef<gsap.core.Timeline | null>(null);
 
   // Animation tracking for nav links only (excluding name/logo)
   const animationRefs = useRef<
@@ -23,7 +23,6 @@ const Navbar = () => {
         isAnimating: boolean;
         currentState: "normal" | "hovered";
         targetState: "normal" | "hovered";
-        hoverStartTime?: number;
         element: HTMLElement;
       }
     >
@@ -32,13 +31,16 @@ const Navbar = () => {
   // Debounce timer for quick hovers
   const debounceTimers = useRef<Map<HTMLElement, NodeJS.Timeout>>(new Map());
 
-  const navItems = [
-    { path: "/", label: "HOME" },
-    { path: "/work", label: "WORK" },
-    { path: "/archive", label: "ARCHIVE" },
-    { path: "/about", label: "ABOUT" },
-    { path: "/contact", label: "CONTACT" },
-  ];
+  const navItems = useMemo(
+    () => [
+      { path: "/", label: "HOME" },
+      { path: "/work", label: "WORK" },
+      { path: "/archive", label: "ARCHIVE" },
+      { path: "/about", label: "ABOUT" },
+      { path: "/contact", label: "CONTACT" },
+    ],
+    []
+  );
 
   // Enhanced cleanup with proper state reset
   const cleanupAnimation = useCallback((element: HTMLElement) => {
@@ -62,7 +64,6 @@ const Navbar = () => {
 
       // Reset animation state
       animationData.isAnimating = false;
-      animationData.hoverStartTime = undefined;
     }
 
     // Clear debounce timer
@@ -73,88 +74,89 @@ const Navbar = () => {
     }
   }, []);
 
-  // Handle scroll effect - OPTIMIZED with requestAnimationFrame
-  useEffect(() => {
-    let ticking = false;
-
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const scrollTop = window.scrollY;
-          setIsScrolled(scrollTop > 50);
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  // Simplified entrance animation (no name animation) - OPTIMIZED
+  // FIXED: Single entrance animation without double effect
   useEffect(() => {
     if (!navRef.current || hasAnimatedEntrance) return;
 
+    // Kill any existing entrance animation
+    if (entranceTimelineRef.current) {
+      entranceTimelineRef.current.kill();
+    }
+
+    // Set initial state
     gsap.set(navRef.current, {
       y: -30,
       opacity: 0,
-      force3D: true, // GPU acceleration
+      force3D: true,
     });
 
-    const showNavbar = () => {
-      const tl = gsap.timeline();
+    // Get nav link elements
+    const navLinks = navRef.current.querySelectorAll(
+      ".nav-link .original-text"
+    );
+    const navLinkElements = Array.from(navLinks);
 
-      tl.to(navRef.current, {
+    const showNavbar = () => {
+      // Create single master timeline
+      const masterTl = gsap.timeline({
+        onComplete: () => {
+          setHasAnimatedEntrance(true);
+          entranceTimelineRef.current = null;
+        },
+      });
+
+      entranceTimelineRef.current = masterTl;
+
+      // Animate navbar container
+      masterTl.to(navRef.current, {
         y: 0,
         opacity: 1,
         duration: 0.8,
         ease: "power2.out",
         force3D: true,
-      }).call(() => {
-        // Only animate nav links, not the logo/name
-        const navLinks = navRef.current?.querySelectorAll(
-          ".nav-link .original-text"
-        );
-
-        if (navLinks) {
-          const navLinkElements = Array.from(navLinks);
-          if (navLinkElements.length > 0) {
-            navLinkElements.forEach((link, index) => {
-              const linkSplit = new SplitText(link, { type: "chars" });
-              gsap.fromTo(
-                linkSplit.chars,
-                {
-                  y: 15,
-                  opacity: 0,
-                  force3D: true,
-                },
-                {
-                  y: 0,
-                  opacity: 1,
-                  duration: 0.5,
-                  ease: "power3.out",
-                  delay: 0.4 + index * 0.15,
-                  force3D: true,
-                  stagger: {
-                    amount: 0.25,
-                    from: "start",
-                  },
-                  onComplete: () => {
-                    linkSplit.revert();
-                  },
-                }
-              );
-            });
-          }
-        }
-
-        setHasAnimatedEntrance(true);
       });
+
+      // Animate nav links with stagger (coordinated with navbar animation)
+      if (navLinkElements.length > 0) {
+        navLinkElements.forEach((link, index) => {
+          const linkSplit = new SplitText(link, { type: "chars" });
+
+          masterTl.fromTo(
+            linkSplit.chars,
+            {
+              y: 15,
+              opacity: 0,
+              force3D: true,
+            },
+            {
+              y: 0,
+              opacity: 1,
+              duration: 0.5,
+              ease: "power3.out",
+              delay: index * 0.15,
+              force3D: true,
+              stagger: {
+                amount: 0.25,
+                from: "start",
+              },
+              onComplete: () => {
+                linkSplit.revert();
+              },
+            },
+            0.4 // Start after navbar begins moving
+          );
+        });
+      }
     };
 
     const timer = setTimeout(showNavbar, 150);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (entranceTimelineRef.current) {
+        entranceTimelineRef.current.kill();
+        entranceTimelineRef.current = null;
+      }
+    };
   }, [hasAnimatedEntrance]);
 
   // Animation execution for nav links only - OPTIMIZED
@@ -203,23 +205,22 @@ const Navbar = () => {
       // Update states
       animationData.isAnimating = true;
       animationData.targetState = targetState;
-      animationData.currentState = animationData.currentState;
 
       // Animation parameters for nav links - OPTIMIZED durations
       const yOffset = 25;
-      const duration = 0.22; // Slightly faster
-      const staggerAmount = 0.06; // Tighter stagger
-      const overlap = 0.05; // Better overlap
+      const duration = 0.22;
+      const staggerAmount = 0.06;
+      const overlap = 0.05;
 
       // Set hover color immediately for responsiveness
       if (targetState === "hovered") {
-        element.style.color = "rgb(255 255 255)"; // white on hover
+        element.style.color = "rgb(255 255 255)";
       }
 
       // Create timeline with proper cleanup - OPTIMIZED
       const tl = gsap.timeline({
         defaults: {
-          force3D: true, // GPU acceleration for all animations
+          force3D: true,
         },
         onComplete: () => {
           const data = animationRefs.current.get(element);
@@ -274,7 +275,7 @@ const Navbar = () => {
       animationData.duplicateSplit = duplicateSplit;
 
       if (targetState === "hovered") {
-        // Animate to hovered state - OPTIMIZED ease
+        // Animate to hovered state
         tl.set([originalText, duplicateText], { opacity: 1 })
           .set(duplicateSplit.chars, { y: yOffset, opacity: 0 })
           .to(
@@ -283,7 +284,7 @@ const Navbar = () => {
               y: -yOffset,
               opacity: 0,
               duration: duration,
-              ease: "power2.out", // Smoother ease
+              ease: "power2.out",
               stagger: {
                 amount: staggerAmount,
                 from: "start",
@@ -297,7 +298,7 @@ const Navbar = () => {
               y: 0,
               opacity: 1,
               duration: duration,
-              ease: "power2.out", // Smoother ease
+              ease: "power2.out",
               stagger: {
                 amount: staggerAmount,
                 from: "start",
@@ -306,7 +307,7 @@ const Navbar = () => {
             overlap
           );
       } else {
-        // Animate to normal state - OPTIMIZED ease
+        // Animate to normal state
         tl.set([originalText, duplicateText], { opacity: 1 })
           .set(originalSplit.chars, { y: -yOffset, opacity: 0 })
           .to(
@@ -315,7 +316,7 @@ const Navbar = () => {
               y: yOffset,
               opacity: 0,
               duration: duration,
-              ease: "power2.out", // Smoother ease
+              ease: "power2.out",
               stagger: {
                 amount: staggerAmount,
                 from: "start",
@@ -329,7 +330,7 @@ const Navbar = () => {
               y: 0,
               opacity: 1,
               duration: duration,
-              ease: "power2.out", // Smoother ease
+              ease: "power2.out",
               stagger: {
                 amount: staggerAmount,
                 from: "start",
@@ -359,7 +360,7 @@ const Navbar = () => {
         const timer = setTimeout(() => {
           executeAnimation(element, targetState);
           debounceTimers.current.delete(element);
-        }, 30); // Reduced from 50ms
+        }, 30);
 
         debounceTimers.current.set(element, timer);
       }
@@ -382,7 +383,7 @@ const Navbar = () => {
     [handleHoverWithDebounce]
   );
 
-  // Nav hover handlers (no name hover handlers needed)
+  // Nav hover handlers
   const handleNavHover = useCallback(
     (e: React.MouseEvent<HTMLAnchorElement>) => {
       e.preventDefault();
@@ -414,6 +415,13 @@ const Navbar = () => {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      // Kill entrance timeline if still running
+      if (entranceTimelineRef.current) {
+        entranceTimelineRef.current.kill();
+        entranceTimelineRef.current = null;
+      }
+
+      // Cleanup all hover animations
       animationRefs.current.forEach((_, element) => {
         cleanupAnimation(element);
       });
