@@ -14,7 +14,6 @@ const Hero: React.FC = () => {
   const quoteRef = useRef<HTMLDivElement>(null);
   const quoteContainerRef = useRef<HTMLDivElement>(null);
 
-  // Helper array-ref (supaya rapi di TS)
   const setTopHeaderRef =
     (index: number) => (el: HTMLHeadingElement | null) => {
       topHeaderRefs.current[index] = el;
@@ -64,7 +63,7 @@ const Hero: React.FC = () => {
       ? splitChars(developerTitleRef.current)
       : [];
 
-    // ==== Entrance animation (tetap sama seperti versi lama) ====
+    // ==== Entrance animation ====
     const tl = gsap.timeline({ delay: 0.3 });
 
     gsap.set(headerChars, { opacity: 0, y: "100%", force3D: true });
@@ -123,27 +122,10 @@ const Hero: React.FC = () => {
       );
 
     // ================================
-    // AUTO HEIGHT (supaya hero stay sampai quotes selesai)
-    // ================================
-    if (
-      quoteRef.current &&
-      quoteContainerRef.current &&
-      heroWrapperRef.current
-    ) {
-      const textW = quoteRef.current.scrollWidth;
-      const containerW = quoteContainerRef.current.clientWidth;
-
-      // agak diperpanjang supaya nggak cepat pindah section
-      const requiredScroll = (textW - containerW) * 1.18;
-      const totalHeight = window.innerHeight + requiredScroll;
-
-      heroWrapperRef.current.style.minHeight = `${totalHeight}px`;
-    }
-
-    // ================================
-    // SCROLLTRIGGER (horizontal + skew dengan velocity)
+    // QUOTE SCROLL + PROGRESS-BASED SKEW + IDLE RESET
     // ================================
     let st: ScrollTrigger | null = null;
+    let idleTimeout: number | undefined;
 
     if (
       quoteRef.current &&
@@ -152,42 +134,74 @@ const Hero: React.FC = () => {
     ) {
       const quote = quoteRef.current;
       const container = quoteContainerRef.current;
+      const wrapper = heroWrapperRef.current;
 
       const textWidth = quote.scrollWidth;
       const containerWidth = container.clientWidth;
 
-      if (textWidth > containerWidth) {
-        const safetyPadding = containerWidth * 0.35;
-        const effectiveWidth = textWidth - containerWidth + safetyPadding;
-        const maxMove = -effectiveWidth;
+      const distance = Math.max(textWidth - containerWidth, 0);
+      const viewport = window.innerHeight;
 
-        let smoothVelocity = 0;
-        const smoothFactor = 0.22; // stabil tapi responsif
+      // Scroll span: cukup pendek biar 2–3 scroll udah kelar
+      const scrollSpan =
+        distance > 0 ? Math.max(viewport * 0.9, distance * 0.45) : 0;
+
+      const extraHeight = viewport * 0.2;
+      const totalHeight = viewport + scrollSpan + extraHeight;
+      wrapper.style.minHeight = `${totalHeight}px`;
+
+      if (distance > 0) {
+        gsap.set(quote, {
+          x: 0,
+          skewX: 0,
+          transformOrigin: "50% 100%",
+        });
+
+        const skewTo = gsap.quickTo(quote, "skewX", {
+          duration: 0.3,
+          ease: "power3.out",
+        });
+
+        // PROGRESS-BASED "VELOCITY"
+        let prevProgress = 0;
+        let smoothedDelta = 0;
+        const smoothFactor = 0.35;
+
+        const maxSkew = 60; // liar (punyamu)
+        const intensity = 1500; // pengali delta → skew (punyamu)
 
         st = ScrollTrigger.create({
-          trigger: heroWrapperRef.current,
+          trigger: wrapper,
           start: "top top",
-          end: `+=${effectiveWidth + window.innerHeight * 0.8}`,
-          scrub: 1,
-
+          end: `+=${scrollSpan}`,
+          scrub: 0.6,
           onUpdate: (self) => {
-            const p = self.progress;
+            const progress = self.progress;
 
-            // Horizontal movement linear → stabil
-            gsap.set(quote, { x: maxMove * p });
+            // Geser horizontal 0 → -distance
+            const x = gsap.utils.mapRange(0, 1, 0, -distance, progress);
+            gsap.set(quote, { x });
 
-            // Velocity-based skew
-            const rawV = self.getVelocity() / 52;
-            smoothVelocity += (rawV - smoothVelocity) * smoothFactor;
+            // Delta progress frame ini
+            const delta = progress - prevProgress;
+            prevProgress = progress;
 
-            const skew = gsap.utils.clamp(-18, 18, smoothVelocity);
+            // Smooth delta biar liquid
+            smoothedDelta += (delta - smoothedDelta) * smoothFactor;
 
-            gsap.to(quote, {
-              skewX: skew,
-              duration: 0.15,
-              ease: "linear",
-              overwrite: true,
-            });
+            // Hitung skew
+            const rawSkew = smoothedDelta * intensity;
+            const targetSkew = gsap.utils.clamp(-maxSkew, maxSkew, rawSkew);
+
+            skewTo(targetSkew);
+
+            // === IDLE TIMER: kalau tidak ada update baru dalam X ms → balikin ke 0 ===
+            if (idleTimeout !== undefined) {
+              window.clearTimeout(idleTimeout);
+            }
+            idleTimeout = window.setTimeout(() => {
+              skewTo(0);
+            }, 120); // 120ms setelah "gerak terakhir" → huruf balik tegak
           },
         });
       }
@@ -196,6 +210,9 @@ const Hero: React.FC = () => {
     return () => {
       tl.kill();
       if (st) st.kill();
+      if (idleTimeout !== undefined) {
+        window.clearTimeout(idleTimeout);
+      }
     };
   }, []);
 
@@ -204,7 +221,7 @@ const Hero: React.FC = () => {
       {/* Sticky hero supaya scroll ngerjain quotes dulu */}
       <div className="sticky top-0 h-screen overflow-hidden">
         <div className="flex flex-col h-full px-4 sm:px-8 lg:px-12">
-          {/* Top Header — ukuran & style dikembalikan seperti kode lama */}
+          {/* Top Header */}
           <div className="flex justify-between items-start pt-8 sm:pt-12 lg:pt-16">
             <h1
               ref={setTopHeaderRef(0)}
@@ -226,7 +243,7 @@ const Hero: React.FC = () => {
             </h1>
           </div>
 
-          {/* Main Title - ukuran & responsive sama seperti kode lama */}
+          {/* Main Title */}
           <div className="flex justify-center items-center relative z-10 mt-4 sm:mt-0 lg:-mt-8 flex-wrap">
             <h1
               ref={fullstackTitleRef}
@@ -242,7 +259,7 @@ const Hero: React.FC = () => {
             </h1>
           </div>
 
-          {/* Profile Image (sama seperti lama) */}
+          {/* Profile Image */}
           <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
             <div
               ref={profileImageRef}
