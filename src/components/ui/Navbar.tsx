@@ -437,7 +437,7 @@ const Navbar = () => {
   return (
     <nav
       ref={navRef}
-      className="fixed top-0 left-0 right-0 z-50 font-centsbook transition-all duration-300 ease-out"
+      className="sticky top-0 left-0 right-0 z-50 font-centsbook transition-all duration-300 ease-out bg-transparent"
       onMouseLeave={handleNavbarMouseLeave}
       style={{
         transform: "translateZ(0)",
