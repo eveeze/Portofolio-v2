@@ -6,10 +6,7 @@ const Home = () => {
     <div className="w-full">
       {/* Hero + Quotes Section */}
       <section className="w-full bg-background2 -mt-10 md:-mt-11 lg:-mt-12">
-        {/* Tidak perlu h-screen & overflow-hidden, biarkan Hero yang atur tinggi */}
-        <div className="p-4 md:p-6">
-          <Hero />
-        </div>
+        <Hero />
       </section>
 
       {/* Featured Projects Section */}

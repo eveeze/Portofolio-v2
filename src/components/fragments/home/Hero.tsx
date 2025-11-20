@@ -167,7 +167,7 @@ const Hero: React.FC = () => {
         let smoothedDelta = 0;
         const smoothFactor = 0.35;
 
-        const maxSkew = 60; // liar (punyamu)
+        const maxSkew = 55; // liar (punyamu)
         const intensity = 1500; // pengali delta → skew (punyamu)
 
         st = ScrollTrigger.create({
@@ -272,21 +272,21 @@ const Hero: React.FC = () => {
               />
             </div>
           </div>
+        </div>
 
-          {/* Quotes */}
+        {/* Quotes - Dipindahkan keluar dari container dengan padding, langsung menempel ke tepi */}
+        <div
+          ref={quoteContainerRef}
+          className="absolute bottom-1 left-0 right-0 w-full overflow-hidden z-10"
+        >
           <div
-            ref={quoteContainerRef}
-            className="absolute bottom-12 sm:bottom-16 lg:bottom-20 left-0 right-0 w-full overflow-hidden px-4 sm:px-8 lg:px-12 z-10"
+            ref={quoteRef}
+            className="inline-block whitespace-nowrap will-change-transform
+                       text-5xl sm:text-7xl md:text-8xl lg:text-9xl xl:text-[160px] 2xl:text-[192px]
+                       text-whiteText font-ogg font-bold uppercase tracking-tight"
+            style={{ lineHeight: "1.1", paddingLeft: "2px" }}
           >
-            <div
-              ref={quoteRef}
-              className="inline-block whitespace-nowrap will-change-transform
-                         text-4xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[160px]
-                         text-whiteText font-ogg font-bold uppercase tracking-tight"
-              style={{ lineHeight: "1.1" }}
-            >
-              CRAFTING SYSTEMS AND INTERFACES THAT MOVE FAST AND FEEL ALIVE.
-            </div>
+            ELEVATING USER EXPERIENCES THROUGH OPTIMIZED CODE.
           </div>
         </div>
       </div>
