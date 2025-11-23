@@ -6,6 +6,16 @@ import { SplitText } from "gsap/SplitText";
 // Register the SplitText plugin
 gsap.registerPlugin(SplitText);
 
+interface AnimationData {
+  timeline?: gsap.core.Timeline;
+  originalSplit?: SplitText;
+  duplicateSplit?: SplitText;
+  isAnimating: boolean;
+  currentState: "normal" | "hovered";
+  targetState: "normal" | "hovered";
+  element: HTMLElement;
+}
+
 const Navbar = () => {
   const location = useLocation();
   const navRef = useRef<HTMLDivElement>(null);
@@ -13,20 +23,7 @@ const Navbar = () => {
   const entranceTimelineRef = useRef<gsap.core.Timeline | null>(null);
 
   // Animation tracking for nav links only (excluding name/logo)
-  const animationRefs = useRef<
-    Map<
-      HTMLElement,
-      {
-        timeline?: gsap.core.Timeline;
-        originalSplit?: SplitText;
-        duplicateSplit?: SplitText;
-        isAnimating: boolean;
-        currentState: "normal" | "hovered";
-        targetState: "normal" | "hovered";
-        element: HTMLElement;
-      }
-    >
-  >(new Map());
+  const animationRefs = useRef<Map<HTMLElement, AnimationData>>(new Map());
 
   // Debounce timer for quick hovers
   const debounceTimers = useRef<Map<HTMLElement, NodeJS.Timeout>>(new Map());
@@ -96,6 +93,11 @@ const Navbar = () => {
     );
     const navLinkElements = Array.from(navLinks);
 
+    // Get identity element
+    const identity = navRef.current.querySelector(
+      ".nav-identity"
+    ) as HTMLElement | null;
+
     const showNavbar = () => {
       // Create single master timeline
       const masterTl = gsap.timeline({
@@ -146,6 +148,35 @@ const Navbar = () => {
             0.4 // Start after navbar begins moving
           );
         });
+      }
+
+      // Animate identity text
+      if (identity) {
+        const identitySplit = new SplitText(identity, { type: "chars" });
+
+        masterTl.fromTo(
+          identitySplit.chars,
+          {
+            y: 10,
+            opacity: 0,
+            force3D: true,
+          },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.5,
+            ease: "power3.out",
+            force3D: true,
+            stagger: {
+              amount: 0.3,
+              from: "center",
+            },
+            onComplete: () => {
+              identitySplit.revert();
+            },
+          },
+          0.4 // Start at same time as nav links
+        );
       }
     };
 
@@ -405,9 +436,9 @@ const Navbar = () => {
 
   // Navbar mouse leave handler
   const handleNavbarMouseLeave = useCallback(() => {
-    animationRefs.current.forEach((data, element) => {
+    animationRefs.current.forEach((data) => {
       if (data.currentState === "hovered" || data.isAnimating) {
-        handleHoverWithDebounce(element, "normal");
+        handleHoverWithDebounce(data.element, "normal");
       }
     });
   }, [handleHoverWithDebounce]);
@@ -445,9 +476,9 @@ const Navbar = () => {
       }}
     >
       <div className="w-full px-4 md:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-10 md:h-11 lg:h-12">
+        <div className="relative flex items-center h-10 md:h-11 lg:h-12">
           {/* Left Side - Logo */}
-          <div className="flex-shrink-0">
+          <div className="absolute left-0">
             <Link
               to="/"
               className="block transition-opacity duration-200 hover:opacity-80"
@@ -466,8 +497,22 @@ const Navbar = () => {
             </Link>
           </div>
 
+          {/* Center - Identity Text (Absolute Center) */}
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              left: "calc(50% - 40px)",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+            }}
+          >
+            <span className="nav-identity text-xs md:text-sm tracking-[0.2em] uppercase text-gray-300 whitespace-nowrap">
+              TITO ZAKI SAPUTRO / EVEEZE
+            </span>
+          </div>
+
           {/* Right Side - Navigation Links */}
-          <div className="flex-shrink-0">
+          <div className="absolute right-0">
             <ul className="flex items-center space-x-4 lg:space-x-6">
               {navItems.map((item) => {
                 const isActive = location.pathname === item.path;
