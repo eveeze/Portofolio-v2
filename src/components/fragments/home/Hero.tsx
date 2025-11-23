@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useTechStacks } from "../../../hooks/useTechStacks";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -14,11 +15,76 @@ const Hero: React.FC = () => {
   const quoteRef = useRef<HTMLDivElement>(null);
   const quoteContainerRef = useRef<HTMLDivElement>(null);
 
+  const ribbonARef = useRef<HTMLDivElement>(null);
+  const ribbonBRef = useRef<HTMLDivElement>(null);
+
+  const { stacks, isLoading, isEmpty } = useTechStacks();
+
   const setTopHeaderRef =
     (index: number) => (el: HTMLHeadingElement | null) => {
       topHeaderRefs.current[index] = el;
     };
 
+  // ===========================
+  // INFINITE RIBBON LOOP
+  // ===========================
+  useEffect(() => {
+    if (isEmpty || isLoading) return;
+
+    const ribbonAnimations: gsap.core.Tween[] = [];
+
+    if (ribbonARef.current) {
+      const ribbonAContent = ribbonARef.current.querySelector(
+        ".ribbon-content"
+      ) as HTMLElement | null;
+      if (ribbonAContent) {
+        const width = ribbonAContent.scrollWidth / 2;
+        const duration = width / 30;
+
+        gsap.set(ribbonAContent, { x: 0 });
+        const animA = gsap.to(ribbonAContent, {
+          x: -width,
+          duration,
+          ease: "none",
+          repeat: -1,
+          modifiers: {
+            x: gsap.utils.unitize((x) => parseFloat(x) % width),
+          },
+        });
+        ribbonAnimations.push(animA);
+      }
+    }
+
+    if (ribbonBRef.current) {
+      const ribbonBContent = ribbonBRef.current.querySelector(
+        ".ribbon-content"
+      ) as HTMLElement | null;
+      if (ribbonBContent) {
+        const width = ribbonBContent.scrollWidth / 2;
+        const duration = width / 45;
+
+        gsap.set(ribbonBContent, { x: -width });
+        const animB = gsap.to(ribbonBContent, {
+          x: 0,
+          duration,
+          ease: "none",
+          repeat: -1,
+          modifiers: {
+            x: gsap.utils.unitize((x) => parseFloat(x) % width),
+          },
+        });
+        ribbonAnimations.push(animB);
+      }
+    }
+
+    return () => {
+      ribbonAnimations.forEach((anim) => anim.kill());
+    };
+  }, [stacks, isLoading, isEmpty]);
+
+  // ===========================
+  // TEXT & QUOTE ANIMATIONS
+  // ===========================
   useEffect(() => {
     const splitChars = (el: HTMLElement) => {
       const text = el.textContent || "";
@@ -52,7 +118,7 @@ const Hero: React.FC = () => {
       return chars;
     };
 
-    // ==== Prepare text ====
+    // Text split
     const headerChars = topHeaderRefs.current.flatMap((el) =>
       el ? splitChars(el) : []
     );
@@ -63,7 +129,7 @@ const Hero: React.FC = () => {
       ? splitChars(developerTitleRef.current)
       : [];
 
-    // ==== Entrance animation ====
+    // Entrance animation
     const tl = gsap.timeline({ delay: 0.3 });
 
     gsap.set(headerChars, { opacity: 0, y: "100%", force3D: true });
@@ -80,10 +146,8 @@ const Hero: React.FC = () => {
       duration: 0.8,
       stagger: {
         amount: Math.min(0.02 * headerChars.length, 0.8),
-        ease: "power1.out",
       },
       ease: "power2.out",
-      force3D: true,
     })
       .to(
         profileImageRef.current,
@@ -96,12 +160,7 @@ const Hero: React.FC = () => {
           opacity: 1,
           y: "0%",
           duration: 0.8,
-          stagger: {
-            amount: Math.min(0.02 * fullstackChars.length, 0.5),
-            ease: "power1.out",
-          },
-          ease: "power2.out",
-          force3D: true,
+          stagger: { amount: 0.4 },
         },
         1.0
       )
@@ -111,19 +170,12 @@ const Hero: React.FC = () => {
           opacity: 1,
           y: "0%",
           duration: 0.8,
-          stagger: {
-            amount: Math.min(0.02 * developerChars.length, 0.5),
-            ease: "power1.out",
-          },
-          ease: "power2.out",
-          force3D: true,
+          stagger: { amount: 0.4 },
         },
         1.4
       );
 
-    // ================================
-    // QUOTE SCROLL + PROGRESS-BASED SKEW + IDLE RESET
-    // ================================
+    // Quote skew scroll animation
     let st: ScrollTrigger | null = null;
     let idleTimeout: number | undefined;
 
@@ -138,37 +190,23 @@ const Hero: React.FC = () => {
 
       const textWidth = quote.scrollWidth;
       const containerWidth = container.clientWidth;
-
       const distance = Math.max(textWidth - containerWidth, 0);
       const viewport = window.innerHeight;
-
-      // Scroll span: cukup pendek biar 2–3 scroll udah kelar
       const scrollSpan =
         distance > 0 ? Math.max(viewport * 0.9, distance * 0.45) : 0;
 
-      const extraHeight = viewport * 0.2;
-      const totalHeight = viewport + scrollSpan + extraHeight;
-      wrapper.style.minHeight = `${totalHeight}px`;
+      wrapper.style.minHeight = `${viewport + scrollSpan + viewport * 0.2}px`;
 
       if (distance > 0) {
-        gsap.set(quote, {
-          x: 0,
-          skewX: 0,
-          transformOrigin: "50% 100%",
-        });
+        gsap.set(quote, { x: 0, skewX: 0 });
 
         const skewTo = gsap.quickTo(quote, "skewX", {
           duration: 0.3,
           ease: "power3.out",
         });
 
-        // PROGRESS-BASED "VELOCITY"
         let prevProgress = 0;
         let smoothedDelta = 0;
-        const smoothFactor = 0.35;
-
-        const maxSkew = 55; // liar (punyamu)
-        const intensity = 1500; // pengali delta → skew (punyamu)
 
         st = ScrollTrigger.create({
           trigger: wrapper,
@@ -176,32 +214,23 @@ const Hero: React.FC = () => {
           end: `+=${scrollSpan}`,
           scrub: 0.6,
           onUpdate: (self) => {
-            const progress = self.progress;
+            const p = self.progress;
 
-            // Geser horizontal 0 → -distance
-            const x = gsap.utils.mapRange(0, 1, 0, -distance, progress);
-            gsap.set(quote, { x });
+            gsap.set(quote, {
+              x: gsap.utils.mapRange(0, 1, 0, -distance, p),
+            });
 
-            // Delta progress frame ini
-            const delta = progress - prevProgress;
-            prevProgress = progress;
+            const delta = p - prevProgress;
+            prevProgress = p;
+            smoothedDelta += (delta - smoothedDelta) * 0.35;
 
-            // Smooth delta biar liquid
-            smoothedDelta += (delta - smoothedDelta) * smoothFactor;
-
-            // Hitung skew
-            const rawSkew = smoothedDelta * intensity;
-            const targetSkew = gsap.utils.clamp(-maxSkew, maxSkew, rawSkew);
+            const rawSkew = smoothedDelta * 1500;
+            const targetSkew = gsap.utils.clamp(-55, 55, rawSkew);
 
             skewTo(targetSkew);
 
-            // === IDLE TIMER: kalau tidak ada update baru dalam X ms → balikin ke 0 ===
-            if (idleTimeout !== undefined) {
-              window.clearTimeout(idleTimeout);
-            }
-            idleTimeout = window.setTimeout(() => {
-              skewTo(0);
-            }, 120); // 120ms setelah "gerak terakhir" → huruf balik tegak
+            if (idleTimeout) clearTimeout(idleTimeout);
+            idleTimeout = window.setTimeout(() => skewTo(0), 120);
           },
         });
       }
@@ -210,60 +239,124 @@ const Hero: React.FC = () => {
     return () => {
       tl.kill();
       if (st) st.kill();
-      if (idleTimeout !== undefined) {
-        window.clearTimeout(idleTimeout);
-      }
+      if (idleTimeout) clearTimeout(idleTimeout);
     };
   }, []);
 
+  // ===========================
+  // RENDER RIBBON CONTENT
+  // ===========================
+  const renderRibbonContent = () => {
+    if (isLoading || isEmpty) return null;
+
+    return stacks.map((stack, idx) => (
+      <div
+        key={`${stack._id}-${idx}`}
+        className="flex items-center gap-3 px-6 sm:px-8 md:px-10 lg:px-12"
+      >
+        {stack.imageUrl && (
+          <img
+            src={stack.imageUrl}
+            alt={stack.name}
+            className="techstack-icon h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 object-contain"
+          />
+        )}
+        <span className="text-sm sm:text-base md:text-lg tracking-wider uppercase font-centsbook text-whiteText/80">
+          {stack.name}
+        </span>
+      </div>
+    ));
+  };
+
+  // ===========================
+  // RETURN JSX
+  // ===========================
   return (
     <div ref={heroWrapperRef} className="relative bg-background2">
-      {/* Sticky hero supaya scroll ngerjain quotes dulu */}
       <div className="sticky top-0 h-screen overflow-hidden">
         <div className="flex flex-col h-full px-4 sm:px-8 lg:px-12">
           {/* Top Header */}
           <div className="flex justify-between items-start pt-8 sm:pt-12 lg:pt-16">
             <h1
               ref={setTopHeaderRef(0)}
-              className="text-2xl sm:text-3xl lg:text-4xl font-ogg font-bold tracking-tighter text-grayText leading-tight"
+              className="text-2xl sm:text-3xl lg:text-4xl font-ogg font-bold tracking-tighter text-grayText"
             >
               A
             </h1>
             <h1
               ref={setTopHeaderRef(1)}
-              className="text-2xl sm:text-3xl lg:text-4xl font-ogg font-bold tracking-tighter text-grayText leading-tight"
+              className="text-2xl sm:text-3xl lg:text-4xl font-ogg font-bold tracking-tighter text-grayText"
             >
               SERIOUSLY
             </h1>
             <h1
               ref={setTopHeaderRef(2)}
-              className="text-2xl sm:text-3xl lg:text-4xl font-ogg font-bold tracking-tighter text-grayText leading-tight"
+              className="text-2xl sm:text-3xl lg:text-4xl font-ogg font-bold tracking-tighter text-grayText"
             >
               GOOD
             </h1>
           </div>
 
           {/* Main Title */}
-          <div className="flex justify-center items-center relative z-10 mt-4 sm:mt-0 lg:-mt-8 flex-wrap">
+          <div
+            className="flex justify-center items-center relative z-10
+            mt-2 sm:mt-3 md:mt-4 lg:mt-2 xl:mt-1
+            flex-wrap"
+          >
             <h1
               ref={fullstackTitleRef}
-              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-ogg font-bold tracking-normal text-whiteText leading-tight text-center mr-4 sm:mr-6 lg:mr-8"
+              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-ogg font-bold text-whiteText mr-4 sm:mr-6 lg:mr-8"
             >
               FULLSTACK
             </h1>
             <h1
               ref={developerTitleRef}
-              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-ogg font-bold tracking-normal text-whiteText leading-tight text-center"
+              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-ogg font-bold text-whiteText"
             >
               DEVELOPER
             </h1>
           </div>
 
-          {/* Profile Image */}
-          <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
+          {/* RIBBONS — garis putih, tanpa background blur */}
+          {!isEmpty && !isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+              {/* Ribbon A */}
+              <div
+                ref={ribbonARef}
+                className="absolute w-[180vw] h-16 sm:h-20 md:h-24 lg:h-28 overflow-hidden left-1/2 top-1/2 z-[1] border-y border-whiteText/35"
+                style={{
+                  transform: "translate(-50%, -50%) rotate(-12deg)",
+                  transformOrigin: "center",
+                }}
+              >
+                <div className="ribbon-content absolute inset-0 flex items-center whitespace-nowrap will-change-transform">
+                  {renderRibbonContent()}
+                  {renderRibbonContent()}
+                </div>
+              </div>
+
+              {/* Ribbon B */}
+              <div
+                ref={ribbonBRef}
+                className="absolute w-[180vw] h-16 sm:h-20 md:h-24 lg:h-28 overflow-hidden left-1/2 top-1/2 z-[1] border-y border-whiteText/25"
+                style={{
+                  transform: "translate(-50%, -50%) rotate(12deg)",
+                  transformOrigin: "center",
+                }}
+              >
+                <div className="ribbon-content absolute inset-0 flex items-center whitespace-nowrap will-change-transform">
+                  {renderRibbonContent()}
+                  {renderRibbonContent()}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* PROFILE IMAGE */}
+          <div className="absolute inset-0 flex items-center justify-center z-[5] pointer-events-none">
             <div
               ref={profileImageRef}
-              className="w-48 h-48 sm:w-64 sm:h-64 md:w-72 md:h-72 lg:w-80 lg:h-80 overflow-hidden sm:rounded-none"
+              className="w-48 h-48 sm:w-64 sm:h-64 md:w-72 md:h-72 lg:w-80 lg:h-80 overflow-hidden"
             >
               <img
                 src="/images/pp.jpg"
@@ -274,16 +367,14 @@ const Hero: React.FC = () => {
           </div>
         </div>
 
-        {/* Quotes - Dipindahkan keluar dari container dengan padding, langsung menempel ke tepi */}
+        {/* Quotes */}
         <div
           ref={quoteContainerRef}
           className="absolute bottom-1 left-0 right-0 w-full overflow-hidden z-10"
         >
           <div
             ref={quoteRef}
-            className="inline-block whitespace-nowrap will-change-transform
-                       text-5xl sm:text-7xl md:text-8xl lg:text-9xl xl:text-[160px] 2xl:text-[192px]
-                       text-whiteText font-ogg font-bold uppercase tracking-tight"
+            className="inline-block whitespace-nowrap will-change-transform text-5xl sm:text-7xl md:text-8xl lg:text-9xl xl:text-[160px] 2xl:text-[192px] text-whiteText font-ogg font-bold uppercase tracking-tight"
             style={{ lineHeight: "1.1", paddingLeft: "2px" }}
           >
             ELEVATING USER EXPERIENCES THROUGH OPTIMIZED CODE.

@@ -367,6 +367,14 @@ body.preloader-active {
   contain: layout style paint;
 }
 
+.techstack-icon {
+  background-color: transparent;
+  /* Bikin semua icon jadi putih-ish tanpa blur background */
+  filter: grayscale(1) brightness(2) contrast(2);
+  mix-blend-mode: screen;
+}
+
+
 /* Ultra smooth transitions for filter items */
 .filter-button+div button span {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
