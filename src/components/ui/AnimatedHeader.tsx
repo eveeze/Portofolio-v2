@@ -1,4 +1,4 @@
-// src/components/ui/AnimatedHeader.tsx (Optimized - Smooth Scroll)
+// src/components/ui/AnimatedHeader.tsx (Optimized - Smooth Scroll + Awwwards Responsive)
 import { useEffect, useMemo, useRef, RefObject, useCallback } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -42,13 +42,12 @@ const AnimatedTextHeader: React.FC<AnimatedTextHeaderProps> = ({
 
   const justifyClass = location === "start" ? "justify-start" : "justify-end";
 
-  // Optimized: Memoize dengan React.memo style untuk prevent re-render
   const splitText = useMemo(() => {
     const words = text.split(" ");
     return words.map((word, wordIndex) => (
       <span
         key={`header-word-${wordIndex}`}
-        className="header-word inline-block mr-4"
+        className="header-word inline-block mr-2 sm:mr-3 md:mr-4"
         style={{
           overflow: "hidden",
           display: "inline-block",
@@ -72,7 +71,6 @@ const AnimatedTextHeader: React.FC<AnimatedTextHeaderProps> = ({
     ));
   }, [text]);
 
-  // Optimized: Memoize cleanup function
   const cleanup = useCallback(() => {
     if (scrollTriggerRef.current) {
       scrollTriggerRef.current.kill();
@@ -84,7 +82,6 @@ const AnimatedTextHeader: React.FC<AnimatedTextHeaderProps> = ({
     }
   }, []);
 
-  // Optimized animation with smoother scroll performance
   const createAnimation = useCallback(() => {
     const el = containerRef.current;
     if (!el || !isReady) return;
@@ -94,7 +91,6 @@ const AnimatedTextHeader: React.FC<AnimatedTextHeaderProps> = ({
     const charElements = el.querySelectorAll(".header-char");
     if (charElements.length === 0) return;
 
-    // EXACT same initial state
     gsap.set(charElements, {
       willChange: "transform",
       opacity: 0,
@@ -103,7 +99,6 @@ const AnimatedTextHeader: React.FC<AnimatedTextHeaderProps> = ({
       force3D: true,
     });
 
-    // EXACT same timeline
     const tl = gsap.timeline({
       paused: true,
       defaults: {
@@ -112,7 +107,6 @@ const AnimatedTextHeader: React.FC<AnimatedTextHeaderProps> = ({
       },
     });
 
-    // EXACT same animation
     tl.to(charElements, {
       opacity: 1,
       y: "0%",
@@ -127,19 +121,17 @@ const AnimatedTextHeader: React.FC<AnimatedTextHeaderProps> = ({
 
     timelineRef.current = tl;
 
-    // OPTIMIZED ScrollTrigger - smoother scrub & better performance
     scrollTriggerRef.current = ScrollTrigger.create({
       trigger: el,
       start: scrollStart,
       end: scrollEnd,
-      scrub: 0.5, // Lebih smooth dari 1
+      scrub: 0.5,
       animation: tl,
       invalidateOnRefresh: true,
       refreshPriority: 0,
       fastScrollEnd: true,
       anticipatePin: 1,
       scroller: document.body,
-      // Removed manual onUpdate - let GSAP handle it for smoother performance
     });
   }, [
     animationDuration,
@@ -151,13 +143,11 @@ const AnimatedTextHeader: React.FC<AnimatedTextHeaderProps> = ({
     cleanup,
   ]);
 
-  // Optimized: Combine effects with refresh on mount
   useEffect(() => {
     if (!isReady) return;
 
     const timeoutId = setTimeout(() => {
       createAnimation();
-      // Refresh ScrollTrigger after animation setup for smooth start
       ScrollTrigger.refresh();
     }, delay + 50);
 
@@ -170,7 +160,7 @@ const AnimatedTextHeader: React.FC<AnimatedTextHeaderProps> = ({
   return (
     <h1
       ref={containerRef}
-      className={`px-8 font-normal flex ${justifyClass} text-[245px] ${fontFamily} tracking-tight text-whiteText leading-[0.78] -mb-6 ${containerClassName}`}
+      className={`px-4 sm:px-6 md:px-8 font-normal flex ${justifyClass} text-[clamp(2.5rem,12vw,15.3125rem)] ${fontFamily} tracking-tight sm:tracking-tight md:tracking-tight text-whiteText leading-[0.85] sm:leading-[0.82] md:leading-[0.8] lg:leading-[0.78] -mb-3 sm:-mb-4 md:-mb-5 lg:-mb-6 ${containerClassName}`}
       style={{
         transform: "translateZ(0)",
         backfaceVisibility: "hidden",

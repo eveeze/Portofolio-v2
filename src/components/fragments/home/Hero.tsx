@@ -1,9 +1,44 @@
-import React, { useEffect, useRef } from "react";
+import React, { useLayoutEffect, useMemo, useRef } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useTechStacks } from "../../../hooks/useTechStacks";
 
 gsap.registerPlugin(ScrollTrigger);
+
+// ===========================
+// HELPER: SPLIT TEXT INTO CHARS (di luar komponen)
+// ===========================
+const splitChars = (el: HTMLElement) => {
+  const text = el.textContent || "";
+  el.innerHTML = "";
+  const chars: HTMLSpanElement[] = [];
+
+  text.split(" ").forEach((word, wIndex, arr) => {
+    const wrap = document.createElement("span");
+    wrap.style.display = "inline-block";
+    wrap.style.overflow = "hidden";
+
+    word.split("").forEach((c) => {
+      const span = document.createElement("span");
+      span.textContent = c;
+      span.className = "char inline-block";
+      wrap.appendChild(span);
+      chars.push(span);
+    });
+
+    el.appendChild(wrap);
+
+    if (wIndex < arr.length - 1) {
+      const space = document.createElement("span");
+      space.textContent = " ";
+      space.className = "char inline-block";
+      el.appendChild(space);
+      chars.push(space);
+    }
+  });
+
+  return chars;
+};
 
 const Hero: React.FC = () => {
   const heroWrapperRef = useRef<HTMLDivElement>(null);
@@ -26,99 +61,91 @@ const Hero: React.FC = () => {
     };
 
   // ===========================
-  // INFINITE RIBBON LOOP
+  // MEMOIZED RIBBON CONTENT (biar gak map setiap render)
   // ===========================
-  useEffect(() => {
-    if (isEmpty || isLoading) return;
+  const ribbonItems = useMemo(() => {
+    if (isLoading || isEmpty) return null;
 
-    const ribbonAnimations: gsap.core.Tween[] = [];
-
-    if (ribbonARef.current) {
-      const ribbonAContent = ribbonARef.current.querySelector(
-        ".ribbon-content"
-      ) as HTMLElement | null;
-      if (ribbonAContent) {
-        const width = ribbonAContent.scrollWidth / 2;
-        const duration = width / 30;
-
-        gsap.set(ribbonAContent, { x: 0 });
-        const animA = gsap.to(ribbonAContent, {
-          x: -width,
-          duration,
-          ease: "none",
-          repeat: -1,
-          modifiers: {
-            x: gsap.utils.unitize((x) => parseFloat(x) % width),
-          },
-        });
-        ribbonAnimations.push(animA);
-      }
-    }
-
-    if (ribbonBRef.current) {
-      const ribbonBContent = ribbonBRef.current.querySelector(
-        ".ribbon-content"
-      ) as HTMLElement | null;
-      if (ribbonBContent) {
-        const width = ribbonBContent.scrollWidth / 2;
-        const duration = width / 45;
-
-        gsap.set(ribbonBContent, { x: -width });
-        const animB = gsap.to(ribbonBContent, {
-          x: 0,
-          duration,
-          ease: "none",
-          repeat: -1,
-          modifiers: {
-            x: gsap.utils.unitize((x) => parseFloat(x) % width),
-          },
-        });
-        ribbonAnimations.push(animB);
-      }
-    }
-
-    return () => {
-      ribbonAnimations.forEach((anim) => anim.kill());
-    };
+    return stacks.map((stack, idx) => (
+      <div
+        key={`${stack._id}-${idx}`}
+        className="flex items-center gap-3 px-6 sm:px-8 md:px-10 lg:px-12"
+      >
+        {stack.imageUrl && (
+          <img
+            src={stack.imageUrl}
+            alt={stack.name}
+            className="techstack-icon h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 object-contain"
+          />
+        )}
+        <span className="text-sm sm:text-base md:text-lg tracking-wider uppercase font-centsbook text-whiteText/80">
+          {stack.name}
+        </span>
+      </div>
+    ));
   }, [stacks, isLoading, isEmpty]);
 
   // ===========================
-  // TEXT & QUOTE ANIMATIONS
+  // INFINITE RIBBON LOOP (SEAMLESS) – useLayoutEffect
   // ===========================
-  useEffect(() => {
-    const splitChars = (el: HTMLElement) => {
-      const text = el.textContent || "";
-      el.innerHTML = "";
-      const chars: HTMLSpanElement[] = [];
+  useLayoutEffect(() => {
+    if (isEmpty || isLoading) return;
 
-      text.split(" ").forEach((word, wIndex, arr) => {
-        const wrap = document.createElement("span");
-        wrap.style.display = "inline-block";
-        wrap.style.overflow = "hidden";
+    const ribbonTweens: gsap.core.Tween[] = [];
 
-        word.split("").forEach((c) => {
-          const span = document.createElement("span");
-          span.textContent = c;
-          span.className = "char inline-block";
-          wrap.appendChild(span);
-          chars.push(span);
-        });
+    const createInfiniteRibbon = (
+      wrapper: HTMLDivElement,
+      baseSpeed: number,
+      direction: "left" | "right" = "left"
+    ) => {
+      const track = wrapper.querySelector(
+        ".ribbon-track"
+      ) as HTMLElement | null;
+      const firstSegment = wrapper.querySelector(
+        ".ribbon-segment"
+      ) as HTMLElement | null;
 
-        el.appendChild(wrap);
+      if (!track || !firstSegment) return;
 
-        if (wIndex < arr.length - 1) {
-          const space = document.createElement("span");
-          space.textContent = " ";
-          space.className = "char inline-block";
-          el.appendChild(space);
-          chars.push(space);
+      const segmentWidth = firstSegment.offsetWidth;
+      if (!segmentWidth) return;
+
+      const duration = segmentWidth / baseSpeed;
+
+      const fromX = direction === "left" ? 0 : -segmentWidth;
+      const toX = direction === "left" ? -segmentWidth : 0;
+
+      const tween = gsap.fromTo(
+        track,
+        { x: fromX },
+        {
+          x: toX,
+          duration,
+          ease: "none",
+          repeat: -1,
         }
-      });
+      );
 
-      return chars;
+      ribbonTweens.push(tween);
     };
 
-    // Text split
+    if (ribbonARef.current) {
+      createInfiniteRibbon(ribbonARef.current, 50, "left");
+    }
+
+    if (ribbonBRef.current) {
+      createInfiniteRibbon(ribbonBRef.current, 35, "right");
+    }
+
+    return () => {
+      ribbonTweens.forEach((t) => t.kill());
+    };
+  }, [isEmpty, isLoading, ribbonARef, ribbonBRef]);
+
+  // ===========================
+  // TEXT & QUOTE ANIMATIONS – useLayoutEffect
+  // ===========================
+  useLayoutEffect(() => {
     const headerChars = topHeaderRefs.current.flatMap((el) =>
       el ? splitChars(el) : []
     );
@@ -129,7 +156,6 @@ const Hero: React.FC = () => {
       ? splitChars(developerTitleRef.current)
       : [];
 
-    // Entrance animation
     const tl = gsap.timeline({ delay: 0.3 });
 
     gsap.set(headerChars, { opacity: 0, y: "100%", force3D: true });
@@ -138,7 +164,9 @@ const Hero: React.FC = () => {
       y: "100%",
       force3D: true,
     });
-    gsap.set(profileImageRef.current, { opacity: 0, scale: 0.8 });
+    if (profileImageRef.current) {
+      gsap.set(profileImageRef.current, { opacity: 0, scale: 0.8 });
+    }
 
     tl.to(headerChars, {
       opacity: 1,
@@ -195,7 +223,9 @@ const Hero: React.FC = () => {
       const scrollSpan =
         distance > 0 ? Math.max(viewport * 0.9, distance * 0.45) : 0;
 
-      wrapper.style.minHeight = `${viewport + scrollSpan + viewport * 0.2}px`;
+      gsap.set(wrapper, {
+        minHeight: viewport + scrollSpan + viewport * 0.2,
+      });
 
       if (distance > 0) {
         gsap.set(quote, { x: 0, skewX: 0 });
@@ -242,31 +272,6 @@ const Hero: React.FC = () => {
       if (idleTimeout) clearTimeout(idleTimeout);
     };
   }, []);
-
-  // ===========================
-  // RENDER RIBBON CONTENT
-  // ===========================
-  const renderRibbonContent = () => {
-    if (isLoading || isEmpty) return null;
-
-    return stacks.map((stack, idx) => (
-      <div
-        key={`${stack._id}-${idx}`}
-        className="flex items-center gap-3 px-6 sm:px-8 md:px-10 lg:px-12"
-      >
-        {stack.imageUrl && (
-          <img
-            src={stack.imageUrl}
-            alt={stack.name}
-            className="techstack-icon h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 object-contain"
-          />
-        )}
-        <span className="text-sm sm:text-base md:text-lg tracking-wider uppercase font-centsbook text-whiteText/80">
-          {stack.name}
-        </span>
-      </div>
-    ));
-  };
 
   // ===========================
   // RETURN JSX
@@ -329,9 +334,16 @@ const Hero: React.FC = () => {
                   transformOrigin: "center",
                 }}
               >
-                <div className="ribbon-content absolute inset-0 flex items-center whitespace-nowrap will-change-transform">
-                  {renderRibbonContent()}
-                  {renderRibbonContent()}
+                <div className="ribbon-track absolute inset-0 flex items-center whitespace-nowrap will-change-transform">
+                  <div className="ribbon-segment flex items-center">
+                    {ribbonItems}
+                  </div>
+                  <div
+                    className="ribbon-segment flex items-center"
+                    aria-hidden="true"
+                  >
+                    {ribbonItems}
+                  </div>
                 </div>
               </div>
 
@@ -344,9 +356,16 @@ const Hero: React.FC = () => {
                   transformOrigin: "center",
                 }}
               >
-                <div className="ribbon-content absolute inset-0 flex items-center whitespace-nowrap will-change-transform">
-                  {renderRibbonContent()}
-                  {renderRibbonContent()}
+                <div className="ribbon-track absolute inset-0 flex items-center whitespace-nowrap will-change-transform">
+                  <div className="ribbon-segment flex items-center">
+                    {ribbonItems}
+                  </div>
+                  <div
+                    className="ribbon-segment flex items-center"
+                    aria-hidden="true"
+                  >
+                    {ribbonItems}
+                  </div>
                 </div>
               </div>
             </div>

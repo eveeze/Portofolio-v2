@@ -1,4 +1,4 @@
-// pages/Work.tsx — 2 Column Grid Layout with Filter Left, Hero Right
+// pages/Work.tsx
 import { useState, useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -140,60 +140,63 @@ const Work = () => {
 
   return (
     <section className="w-full min-h-screen bg-background2 py-20 md:py-32">
-      {/* Container - LEBIH LEBAR, SPACE KE TEPI LEBIH TIPIS */}
+      {/* HEADER / FILTER - tetap rapih di tengah, tidak full-bleed */}
       <div
-        className="mx-auto px-2 md:px-3 lg:px-4"
-        style={{ width: "clamp(320px, 98vw, 1600px)" }}
+        ref={headerRef}
+        className="mx-auto px-4 md:px-6 lg:px-10 mb-12 md:mb-16"
+        style={{ width: "clamp(320px, 92vw, 1440px)" }}
       >
-        {/* Header / Hero - FILTER KIRI, HERO KANAN */}
-        <div ref={headerRef} className="mb-12 md:mb-16">
-          {/* Filter di kiri atas */}
-          <div className="mb-8 md:mb-0">
-            <ProjectFilter
-              activeFilter={activeFilter}
-              onFilterChange={setActiveFilter}
-              projectCounts={projectCounts}
-            />
-          </div>
-
-          {/* Hero di kanan */}
-          <div className="flex flex-col items-end text-left mb-8">
-            <h1
-              ref={titleRef}
-              className="font-ogg text-whiteText text-6xl md:text-8xl lg:text-9xl leading-none"
-            >
-              <span className="inline-block">WORK</span>
-              <sup
-                ref={countRef}
-                className="font-centsbook text-whiteText text-xl md:text-2xl lg:text-3xl ml-2 align-super"
-                style={{
-                  opacity: 1,
-                  verticalAlign: "super",
-                  fontSize: "0.5em",
-                  lineHeight: 0,
-                }}
-              >
-                &#40;{projects ? projects.length : 0}&#41;
-              </sup>
-            </h1>
-          </div>
-          <p
-            ref={subtitleRef}
-            className="font-centsbook text-whiteText text-base md:text-lg max-w-3xl ml-auto text-left"
-            style={{ opacity: 1, transform: "translateY(0)" }}
-          >
-            Crafting seamless digital experiences, from concept to deployment.
-            Explore my case studies below.
-          </p>
+        {/* Filter di kiri atas */}
+        <div className="mb-8 md:mb-10">
+          <ProjectFilter
+            activeFilter={activeFilter}
+            onFilterChange={setActiveFilter}
+            projectCounts={projectCounts}
+          />
         </div>
 
-        {/* Grid - 2 KOLOM, GAP LEBIH RAPAT, IMAGES FULLY VISIBLE */}
-        {projects?.length ? (
+        {/* Hero Work di kanan */}
+        <div className="flex flex-col items-end text-left mb-6 md:mb-8">
+          <h1
+            ref={titleRef}
+            className="font-oggs text-whiteText text-6xl md:text-8xl lg:text-9xl leading-none"
+          >
+            <span className="inline-block">WORK</span>
+            <sup
+              ref={countRef}
+              className="font-centsbook text-whiteText text-xl md:text-2xl lg:text-3xl ml-2 align-super"
+              style={{
+                opacity: 1,
+                verticalAlign: "super",
+                fontSize: "0.5em",
+                lineHeight: 0,
+              }}
+            >
+              &#40;{projects ? projects.length : 0}&#41;
+            </sup>
+          </h1>
+        </div>
+        <p
+          ref={subtitleRef}
+          className="font-centsbook text-whiteText text-base md:text-lg max-w-3xl ml-auto text-left"
+          style={{ opacity: 1, transform: "translateY(0)" }}
+        >
+          Crafting seamless digital experiences, from concept to deployment.
+          Explore my case studies below.
+        </p>
+      </div>
+
+      {/* GRID - hampir full-bleed, cards lebih dekat ke tepi layar */}
+      {projects?.length ? (
+        <div
+          className="mx-auto mt-4 md:mt-6 px-2 sm:px-3 md:px-4 lg:px-6"
+          style={{ width: "clamp(320px, 98vw, 1800px)" }}
+        >
           <div
             ref={gridRef}
-            className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8"
+            className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 md:gap-6 lg:gap-8"
           >
-            {projects?.map((project, index) => (
+            {projects.map((project, index) => (
               <ProjectCard
                 key={project._id}
                 project={project as Project}
@@ -202,14 +205,14 @@ const Work = () => {
               />
             ))}
           </div>
-        ) : (
-          <div className="text-center py-20">
-            <p className="font-centsbook text-grayText text-lg">
-              No projects found with the selected filter.
-            </p>
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="text-center py-20">
+          <p className="font-centsbook text-grayText text-lg">
+            No projects found with the selected filter.
+          </p>
+        </div>
+      )}
     </section>
   );
 };
