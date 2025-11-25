@@ -26,105 +26,159 @@ const ProjectCard = ({
   const quickX = useRef<gsap.QuickToFunc | null>(null);
   const quickY = useRef<gsap.QuickToFunc | null>(null);
 
-  // === MOUNT ANIMATION (card masuk) ===
+  // === MOUNT ANIMATION (card fade in) ===
   useLayoutEffect(() => {
     if (!cardRef.current || disableAnimation) return;
 
+    const enterDelay = Math.min(index * 0.05, 0.25);
+
     const ctx = gsap.context(() => {
-      gsap.from(cardRef.current, {
-        opacity: 0,
-        y: 40,
-        duration: 0.9,
-        delay: index * 0.08,
-        ease: "power3.out",
-      });
+      gsap.fromTo(
+        cardRef.current,
+        {
+          opacity: 0,
+          y: 18,
+        },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.6,
+          delay: enterDelay,
+          ease: "power2.out",
+          clearProps: "transform,opacity",
+        }
+      );
     }, cardRef);
 
-    return () => ctx.revert();
+    return () => {
+      ctx.revert();
+    };
   }, [index, disableAnimation]);
 
-  // === HOVER TIMELINE (image + title + view case) ===
+  // === HOVER TIMELINE (image + rounded + title + view case) ===
   useLayoutEffect(() => {
     if (disableAnimation || !cardRef.current) return;
 
     const ctx = gsap.context(() => {
-      // pastikan state awal title hover
-      if (titleBottomRef.current) {
-        gsap.set(titleBottomRef.current, {
-          opacity: 0,
-          y: 14,
-        });
-      }
+      const wrapperEl = imageWrapperRef.current;
+      const imageEl = imageRef.current;
+      const titleTopEl = titleTopRef.current;
+      const titleBottomEl = titleBottomRef.current;
+      const cursorEl = cursorRef.current;
+
+      if (!wrapperEl || !imageEl || !titleTopEl || !titleBottomEl || !cursorEl)
+        return;
+
+      // STATE AWAL
+      gsap.set(wrapperEl, {
+        borderRadius: 0,
+        willChange: "border-radius",
+      });
+
+      gsap.set(imageEl, {
+        scale: 1,
+        willChange: "transform",
+      });
+
+      gsap.set(titleTopEl, {
+        yPercent: 0,
+        autoAlpha: 1,
+        willChange: "transform,opacity",
+      });
+
+      gsap.set(titleBottomEl, {
+        yPercent: 32,
+        autoAlpha: 0,
+        willChange: "transform,opacity",
+      });
+
+      gsap.set(cursorEl, {
+        autoAlpha: 0,
+        scale: 0.85,
+        yPercent: 15,
+        x: 0,
+        y: 0,
+        willChange: "transform,opacity",
+      });
 
       const tl = gsap.timeline({
         paused: true,
-        defaults: { ease: "power2.out" },
+        defaults: { ease: "power3.out" },
       });
 
-      // Image zoom — soft & pelan
+      // IMAGE ZOOM — ringan & fluid
       tl.to(
-        imageRef.current,
+        imageEl,
         {
-          scale: 1.04,
-          duration: 0.6,
+          scale: 1.045,
+          duration: 0.4,
+        },
+        0
+      );
+
+      // WRAPPER ROUNDED — “melt” halus
+      tl.to(
+        wrapperEl,
+        {
+          borderRadius: 26,
+          duration: 0.46,
+          ease: "power4.out",
+        },
+        0
+      );
+
+      // TITLE TOP KELUAR — +5% lebih lambat (0.315)
+      tl.to(
+        titleTopEl,
+        {
+          yPercent: -32,
+          autoAlpha: 0,
+          duration: 0.315,
+          ease: "power4.out",
+        },
+        0
+      );
+
+      // TITLE BOTTOM MASUK — +5% lebih lambat juga
+      tl.to(
+        titleBottomEl,
+        {
+          yPercent: 0,
+          autoAlpha: 1,
+          duration: 0.315,
+          ease: "power4.out",
+        },
+        0.03
+      );
+
+      // VIEW CASE — Webflow-ish: slide up + fade + scale
+      tl.fromTo(
+        cursorEl,
+        {
+          autoAlpha: 0,
+          scale: 0.85,
+          yPercent: 18,
+        },
+        {
+          autoAlpha: 1,
+          scale: 1,
+          yPercent: 0,
+          duration: 0.32,
           ease: "power3.out",
         },
-        0
+        0.06
       );
 
-      // Title default keluar
-      tl.to(
-        titleTopRef.current,
-        {
-          y: -14,
-          opacity: 0,
-          duration: 0.45,
-        },
-        0
-      );
+      // CURSOR FOLLOW — viscous, smooth (lebih Webflow feel)
+      quickX.current = gsap.quickTo(cursorEl, "x", {
+        duration: 0.16,
+        ease: "power3.out",
+      });
 
-      // Title hover masuk
-      tl.to(
-        titleBottomRef.current,
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.45,
-        },
-        0.05
-      );
-
-      // View Case pill – kecil, compact, muncul lembut
-      tl.fromTo(
-        cursorRef.current,
-        {
-          opacity: 0,
-          scaleX: 0,
-          scaleY: 0.85,
-          transformOrigin: "50% 50%",
-        },
-        {
-          opacity: 1,
-          scaleX: 1,
-          scaleY: 1,
-          duration: 0.5,
-          ease: "power2.out",
-        },
-        0.12
-      );
-
-      // cursor follow
-      if (cursorRef.current) {
-        quickX.current = gsap.quickTo(cursorRef.current, "x", {
-          duration: 0.25,
-          ease: "power2.out",
-        });
-
-        quickY.current = gsap.quickTo(cursorRef.current, "y", {
-          duration: 0.25,
-          ease: "power2.out",
-        });
-      }
+      quickY.current = gsap.quickTo(cursorEl, "y", {
+        duration: 0.16,
+        ease: "power3.out",
+      });
 
       tlRef.current = tl;
     }, cardRef);
@@ -139,13 +193,20 @@ const ProjectCard = ({
   }, [disableAnimation]);
 
   const play = useCallback(() => {
+    if (disableAnimation) return;
     setIsHovered(true);
-    tlRef.current?.play();
-  }, []);
+
+    if (tlRef.current) {
+      tlRef.current.timeScale(1).play();
+    }
+  }, [disableAnimation]);
 
   const reverse = useCallback(() => {
     setIsHovered(false);
-    tlRef.current?.reverse();
+
+    if (tlRef.current) {
+      tlRef.current.timeScale(1).reverse();
+    }
   }, []);
 
   const handleMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -167,15 +228,12 @@ const ProjectCard = ({
       onMouseLeave={reverse}
       onMouseMove={handleMove}
     >
-      {/* IMAGE WRAPPER — square default, rounded via CSS on hover (bukan GSAP) */}
+      {/* IMAGE WRAPPER — rounded via GSAP */}
       <div
         ref={imageWrapperRef}
         className="
           relative w-full aspect-square overflow-hidden mb-5 
           shadow-[0_12px_42px_rgba(0,0,0,0.35)]
-          transition-[border-radius] duration-500 
-          ease-[cubic-bezier(0.22,0.61,0.36,1)]
-          group-hover:rounded-[26px]
         "
       >
         <div
@@ -186,7 +244,6 @@ const ProjectCard = ({
             backgroundSize: "cover",
             backgroundPosition: "center",
             backfaceVisibility: "hidden",
-            willChange: "transform",
           }}
         />
       </div>
@@ -211,7 +268,6 @@ const ProjectCard = ({
         <div
           ref={titleBottomRef}
           className="absolute inset-0 flex items-baseline gap-2 font-oggs text-lg font-bold"
-          style={{ opacity: 0, transform: "translateY(14px)" }}
         >
           <h3 className="text-whiteText uppercase tracking-wide">
             {project.title}

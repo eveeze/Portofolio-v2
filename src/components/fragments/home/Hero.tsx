@@ -281,22 +281,22 @@ const Hero: React.FC = () => {
       <div className="sticky top-0 h-screen overflow-hidden">
         <div className="flex flex-col h-full px-4 sm:px-8 lg:px-12">
           {/* Top Header */}
-          <div className="flex justify-between items-start pt-8 sm:pt-12 lg:pt-16">
+          <div className="flex justify-between items-start pt-7 sm:pt-11 lg:pt-15">
             <h1
               ref={setTopHeaderRef(0)}
-              className="text-2xl sm:text-3xl lg:text-4xl font-ogg font-bold tracking-tighter text-grayText"
+              className="text-2xl sm:text-3xl lg:text-4xl font-oggs font-bold tracking-tighter text-grayText"
             >
               A
             </h1>
             <h1
               ref={setTopHeaderRef(1)}
-              className="text-2xl sm:text-3xl lg:text-4xl font-ogg font-bold tracking-tighter text-grayText"
+              className="text-2xl sm:text-3xl lg:text-4xl font-oggs font-bold tracking-tighter text-grayText"
             >
               SERIOUSLY
             </h1>
             <h1
               ref={setTopHeaderRef(2)}
-              className="text-2xl sm:text-3xl lg:text-4xl font-ogg font-bold tracking-tighter text-grayText"
+              className="text-2xl sm:text-3xl lg:text-4xl font-oggs font-bold tracking-tighter text-grayText"
             >
               GOOD
             </h1>
@@ -305,18 +305,18 @@ const Hero: React.FC = () => {
           {/* Main Title */}
           <div
             className="flex justify-center items-center relative z-10
-            mt-2 sm:mt-3 md:mt-4 lg:mt-2 xl:mt-1
+            mt-0 sm:-mt-1 md:-mt-1 lg:-mt-2 xl:-mt-3
             flex-wrap"
           >
             <h1
               ref={fullstackTitleRef}
-              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-ogg font-bold text-whiteText mr-4 sm:mr-6 lg:mr-8"
+              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-oggs font-bold text-whiteText mr-4 sm:mr-6 lg:mr-8"
             >
               FULLSTACK
             </h1>
             <h1
               ref={developerTitleRef}
-              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-ogg font-bold text-whiteText"
+              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-oggs font-bold text-whiteText"
             >
               DEVELOPER
             </h1>
@@ -393,7 +393,7 @@ const Hero: React.FC = () => {
         >
           <div
             ref={quoteRef}
-            className="inline-block whitespace-nowrap will-change-transform text-5xl sm:text-7xl md:text-8xl lg:text-9xl xl:text-[160px] 2xl:text-[192px] text-whiteText font-ogg font-bold uppercase tracking-tight"
+            className="inline-block whitespace-nowrap will-change-transform text-5xl sm:text-7xl md:text-8xl lg:text-9xl xl:text-[160px] 2xl:text-[192px] text-whiteText font-oggs  uppercase tracking-tight"
             style={{ lineHeight: "1.1", paddingLeft: "2px" }}
           >
             ELEVATING USER EXPERIENCES THROUGH OPTIMIZED CODE.
