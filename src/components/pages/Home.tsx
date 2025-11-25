@@ -5,15 +5,13 @@ const Home = () => {
   return (
     <div className="w-full">
       {/* Hero + Quotes Section */}
-      <section className="w-full bg-background2 -mt-10 md:-mt-11 lg:-mt-12">
+      <section className="w-full  -mt-10 md:-mt-11 lg:-mt-12">
         <Hero />
       </section>
 
       {/* Featured Projects Section */}
       <section className="w-full">
-        <div className="p-4 md:p-8">
-          <FeaturedProjects />
-        </div>
+        <FeaturedProjects />
       </section>
     </div>
   );
