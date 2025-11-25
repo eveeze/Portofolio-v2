@@ -82,7 +82,7 @@ const AdminProjects: React.FC = () => {
   const statsRef = useRef<HTMLDivElement>(null);
 
   // Queries with proper typing
-  const convexProjects = useQuery(api.projects.getProjects) as
+  const convexProjects = useQuery(api.projects.getProjects, {}) as
     | ConvexProject[]
     | undefined;
   const projectStats = useQuery(api.projects.getProjectStats);
