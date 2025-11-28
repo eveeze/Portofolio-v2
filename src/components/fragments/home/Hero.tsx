@@ -61,7 +61,7 @@ const Hero: React.FC = () => {
     };
 
   // ===========================
-  // MEMOIZED RIBBON CONTENT (biar gak map setiap render)
+  // MEMOIZED RIBBON CONTENT
   // ===========================
   const ribbonItems = useMemo(() => {
     if (isLoading || isEmpty) return null;
@@ -86,7 +86,7 @@ const Hero: React.FC = () => {
   }, [stacks, isLoading, isEmpty]);
 
   // ===========================
-  // INFINITE RIBBON LOOP (SEAMLESS) – useLayoutEffect
+  // INFINITE RIBBON LOOP
   // ===========================
   useLayoutEffect(() => {
     if (isEmpty || isLoading) return;
@@ -143,7 +143,7 @@ const Hero: React.FC = () => {
   }, [isEmpty, isLoading, ribbonARef, ribbonBRef]);
 
   // ===========================
-  // TEXT & QUOTE ANIMATIONS – useLayoutEffect
+  // TEXT & QUOTE ANIMATIONS
   // ===========================
   useLayoutEffect(() => {
     const headerChars = topHeaderRefs.current.flatMap((el) =>
@@ -281,7 +281,8 @@ const Hero: React.FC = () => {
       <div className="sticky top-0 h-screen overflow-hidden">
         <div className="flex flex-col h-full px-4 sm:px-8 lg:px-12">
           {/* Top Header */}
-          <div className="flex justify-between items-start pt-7 sm:pt-11 lg:pt-15">
+          <div className="flex justify-between items-start pt-4 sm:pt-7 lg:pt-15">
+            {/* base & sm diperkecil padding-top supaya header turun mendekati foto */}
             <h1
               ref={setTopHeaderRef(0)}
               className="text-2xl sm:text-3xl lg:text-4xl font-oggs font-bold tracking-tighter text-grayText"
@@ -305,24 +306,25 @@ const Hero: React.FC = () => {
           {/* Main Title */}
           <div
             className="flex justify-center items-center relative z-10
-            mt-0 sm:-mt-1 md:-mt-1 lg:-mt-2 xl:-mt-3
+            mt-3 sm:mt-4 md:-mt-1 lg:-mt-2 xl:-mt-3
             flex-wrap"
           >
+            {/* mt base & sm dibesarkan sedikit supaya blok judul turun mendekati foto */}
             <h1
               ref={fullstackTitleRef}
-              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-oggs font-bold text-whiteText mr-4 sm:mr-6 lg:mr-8"
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-oggs font-bold text-whiteText mr-4 sm:mr-6 lg:mr-8"
             >
               FULLSTACK
             </h1>
             <h1
               ref={developerTitleRef}
-              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-oggs font-bold text-whiteText"
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-oggs font-bold text-whiteText"
             >
               DEVELOPER
             </h1>
           </div>
 
-          {/* RIBBONS — garis putih, tanpa background blur */}
+          {/* RIBBONS */}
           {!isEmpty && !isLoading && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
               {/* Ribbon A */}
@@ -372,10 +374,11 @@ const Hero: React.FC = () => {
           )}
 
           {/* PROFILE IMAGE */}
-          <div className="absolute inset-0 flex items-center justify-center z-[5] pointer-events-none">
+          <div className="absolute inset-0 flex items-center justify-center z-[5] pointer-events-none -translate-y-10 sm:-translate-y-8 md:translate-y-0">
+            {/* base & sm lebih naik sedikit sehingga gap ke judul mengecil */}
             <div
               ref={profileImageRef}
-              className="w-48 h-48 sm:w-64 sm:h-64 md:w-72 md:h-72 lg:w-80 lg:h-80 overflow-hidden"
+              className="w-56 h-56 sm:w-64 sm:h-64 md:w-72 md:h-72 lg:w-80 lg:h-80 overflow-hidden"
             >
               <img
                 src="/images/pp.jpg"
@@ -389,12 +392,13 @@ const Hero: React.FC = () => {
         {/* Quotes */}
         <div
           ref={quoteContainerRef}
-          className="absolute bottom-1 left-0 right-0 w-full overflow-hidden z-10"
+          className="absolute left-0 right-0 w-full overflow-hidden z-10 bottom-16 sm:bottom-20 md:bottom-3"
         >
+          {/* bottom base & sm dinaikkan (nilai lebih besar) → quote lebih dekat ke foto */}
           <div
             ref={quoteRef}
-            className="inline-block whitespace-nowrap will-change-transform text-5xl sm:text-7xl md:text-8xl lg:text-9xl xl:text-[160px] 2xl:text-[192px] text-whiteText font-oggs  uppercase tracking-tight"
-            style={{ lineHeight: "1.1", paddingLeft: "2px" }}
+            className="inline-block whitespace-nowrap will-change-transform text-6xl sm:text-8xl md:text-8xl lg:text-9xl xl:text-[160px] 2xl:text-[192px] text-whiteText font-oggs uppercase tracking-tight"
+            style={{ lineHeight: "1.08", paddingLeft: "2px" }}
           >
             ELEVATING USER EXPERIENCES THROUGH OPTIMIZED CODE.
           </div>
