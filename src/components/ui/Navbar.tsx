@@ -34,6 +34,11 @@ const Navbar = () => {
   const menuItemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const menuArrowRefs = useRef<(HTMLSpanElement | null)[]>([]);
 
+  // Refs untuk hamburger icon animation
+  const hamburgerTopRef = useRef<HTMLSpanElement | null>(null);
+  const hamburgerMiddleRef = useRef<HTMLSpanElement | null>(null);
+  const hamburgerBottomRef = useRef<HTMLSpanElement | null>(null);
+
   const { lenis } = useLenisContext();
 
   const navItems = useMemo(
@@ -189,7 +194,7 @@ const Navbar = () => {
         entranceTimelineRef.current = null;
       }
     };
-  }, [hasAnimatedEntrance, cleanupAnimation]);
+  }, [hasAnimatedEntrance]);
 
   // ========== DESKTOP HOVER ==========
   const executeAnimation = useCallback(
@@ -396,6 +401,66 @@ const Navbar = () => {
     });
   }, [handleHoverWithDebounce]);
 
+  // ========== HAMBURGER ICON ANIMATION ==========
+  const animateHamburgerIcon = useCallback((toOpen: boolean) => {
+    const top = hamburgerTopRef.current;
+    const middle = hamburgerMiddleRef.current;
+    const bottom = hamburgerBottomRef.current;
+
+    if (!top || !middle || !bottom) return;
+
+    // Kill any existing animations
+    gsap.killTweensOf([top, middle, bottom]);
+
+    if (toOpen) {
+      // Transform ke X
+      gsap.to(top, {
+        y: 0,
+        rotate: 45,
+        duration: 0.3,
+        ease: "power2.inOut",
+        force3D: true,
+      });
+      gsap.to(middle, {
+        opacity: 0,
+        scale: 0,
+        duration: 0.2,
+        ease: "power2.inOut",
+        force3D: true,
+      });
+      gsap.to(bottom, {
+        y: 0,
+        rotate: -45,
+        duration: 0.3,
+        ease: "power2.inOut",
+        force3D: true,
+      });
+    } else {
+      // Transform balik ke hamburger (3 garis)
+      gsap.to(top, {
+        y: -5,
+        rotate: 0,
+        duration: 0.3,
+        ease: "power2.inOut",
+        force3D: true,
+      });
+      gsap.to(middle, {
+        opacity: 1,
+        scale: 1,
+        duration: 0.2,
+        ease: "power2.inOut",
+        force3D: true,
+      });
+      gsap.to(bottom, {
+        y: 5,
+        rotate: 0,
+        duration: 0.3,
+        ease: "power2.inOut",
+        force3D: true,
+      });
+    }
+  }, []);
+
   // ========== MOBILE MENU SETUP ==========
   useEffect(() => {
     if (menuOverlayRef.current) {
@@ -426,16 +491,32 @@ const Navbar = () => {
         });
       }
     });
+
+    // Initial hamburger setup
+    if (hamburgerTopRef.current) {
+      gsap.set(hamburgerTopRef.current, { y: -5, rotate: 0, force3D: true });
+    }
+    if (hamburgerMiddleRef.current) {
+      gsap.set(hamburgerMiddleRef.current, {
+        y: 0,
+        opacity: 1,
+        scale: 1,
+        force3D: true,
+      });
+    }
+    if (hamburgerBottomRef.current) {
+      gsap.set(hamburgerBottomRef.current, { y: 5, rotate: 0, force3D: true });
+    }
   }, []);
 
-  // stop / start lenis
+  // ========== STOP / START LENIS ==========
   useEffect(() => {
     if (!lenis) return;
     if (isMenuOpen) lenis.stop();
     else lenis.start();
   }, [isMenuOpen, lenis]);
 
-  // lock body scroll (backup)
+  // ========== LOCK BODY SCROLL ==========
   useEffect(() => {
     if (isMenuOpen) {
       document.body.style.overflow = "hidden";
@@ -453,6 +534,7 @@ const Navbar = () => {
     const bubble = bubbleRef.current;
     if (!overlay || !bubble) return;
 
+    // Kill timeline sebelumnya dengan aman
     if (menuTimelineRef.current) {
       menuTimelineRef.current.kill();
       menuTimelineRef.current = null;
@@ -468,6 +550,7 @@ const Navbar = () => {
       .filter((el): el is HTMLElement => !!el);
 
     if (isMenuOpen) {
+      // Set overlay visible immediately - no delay
       gsap.set(overlay, {
         autoAlpha: 1,
         pointerEvents: "auto",
@@ -478,6 +561,7 @@ const Navbar = () => {
       });
       menuTimelineRef.current = tl;
 
+      // Bubble scale animation
       tl.fromTo(
         bubble,
         {
@@ -485,8 +569,8 @@ const Navbar = () => {
         },
         {
           scale: 1.08,
-          duration: 2.4,
-          ease: "sine.inOut",
+          duration: 1.8,
+          ease: "power3.out",
         }
       ).fromTo(
         itemInners,
@@ -497,11 +581,11 @@ const Navbar = () => {
         {
           y: 0,
           opacity: 1,
-          duration: 1.2,
-          stagger: 0.1,
-          ease: "sine.out",
+          duration: 1.0,
+          stagger: 0.08,
+          ease: "power2.out",
         },
-        "-=1.6"
+        "-=1.4"
       );
     } else {
       const tl = gsap.timeline({
@@ -521,24 +605,30 @@ const Navbar = () => {
       tl.to(reversed, {
         y: 24,
         opacity: 0,
-        duration: 1.0,
-        stagger: 0.08,
-        ease: "sine.inOut",
+        duration: 0.8,
+        stagger: 0.06,
+        ease: "power2.inOut",
       }).to(
         bubble,
         {
           scale: 0.2,
-          duration: 2.2,
-          ease: "sine.inOut",
+          duration: 1.6,
+          ease: "power3.inOut",
         },
-        "-=1.3"
+        "-=1.0"
       );
     }
   }, [isMenuOpen]);
 
+  // ========== TOGGLE MENU FUNCTION ==========
   const toggleMenu = useCallback(() => {
-    setIsMenuOpen((prev) => !prev);
-  }, []);
+    setIsMenuOpen((prev) => {
+      const nextState = !prev;
+      // Animate icon immediately on state change
+      animateHamburgerIcon(nextState);
+      return nextState;
+    });
+  }, [animateHamburgerIcon]);
 
   const handleMenuItemHover = useCallback(
     (index: number, entering: boolean) => {
@@ -557,7 +647,7 @@ const Navbar = () => {
     []
   );
 
-  // cleanup
+  // ========== CLEANUP ==========
   useEffect(() => {
     return () => {
       if (entranceTimelineRef.current) {
@@ -579,6 +669,13 @@ const Navbar = () => {
         menuTimelineRef.current.kill();
         menuTimelineRef.current = null;
       }
+
+      // Cleanup hamburger animations
+      if (hamburgerTopRef.current) gsap.killTweensOf(hamburgerTopRef.current);
+      if (hamburgerMiddleRef.current)
+        gsap.killTweensOf(hamburgerMiddleRef.current);
+      if (hamburgerBottomRef.current)
+        gsap.killTweensOf(hamburgerBottomRef.current);
     };
   }, [cleanupAnimation]);
 
@@ -588,7 +685,8 @@ const Navbar = () => {
       ? createPortal(
           <div
             ref={menuOverlayRef}
-            className="fixed inset-0 z-[9999] h-[100dvh] w-full md:hidden overflow-hidden overscroll-none"
+            id="mobile-menu-overlay"
+            className="fixed inset-0 z-[9997] h-[100dvh] w-full md:hidden overflow-hidden overscroll-none"
           >
             {/* bubble circle yang di-scale dari pojok kanan atas */}
             <div
@@ -598,21 +696,8 @@ const Navbar = () => {
 
             {/* konten menu */}
             <div className="relative z-10 flex h-full w-full flex-col text-white">
-              {/* header overlay – close button DI POSISI MIRIP NAVBAR */}
-              <div className="flex items-center justify-end px-4 pt-3 pb-1">
-                <button
-                  type="button"
-                  onClick={() => setIsMenuOpen(false)}
-                  aria-label="Close navigation"
-                  className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/30 hover:border-white transition-all duration-300"
-                >
-                  <span className="absolute h-[1.5px] w-4 bg-white rotate-45" />
-                  <span className="absolute h-[1.5px] w-4 bg-white -rotate-45" />
-                </button>
-              </div>
-
-              {/* links center */}
-              <div className="flex-1 flex items-center justify-center px-5">
+              {/* links center - NO SEPARATE CLOSE BUTTON */}
+              <div className="flex-1 flex items-center justify-center px-5 pt-16">
                 <div className="w-full max-w-xs space-y-3">
                   {navItems.map((item, index) => (
                     <div
@@ -622,7 +707,7 @@ const Navbar = () => {
                     >
                       <Link
                         to={item.path}
-                        onClick={() => setIsMenuOpen(false)}
+                        onClick={toggleMenu}
                         onMouseEnter={() => handleMenuItemHover(index, true)}
                         onMouseLeave={() => handleMenuItemHover(index, false)}
                         className="menu-link-inner flex items-center justify-between text-white tracking-[0.18em] uppercase"
@@ -652,13 +737,14 @@ const Navbar = () => {
     <>
       <nav
         ref={navRef}
-        className={`sticky top-0 left-0 right-0 z-50 font-centsbook transition-all duration-300 ease-out ${
-          isMenuOpen ? "bg-background2/90 backdrop-blur-lg" : "bg-transparent"
+        className={`sticky top-0 left-0 right-0 z-[9999] font-centsbook transition-colors duration-300 ease-out ${
+          isMenuOpen ? "bg-background2/95 backdrop-blur-lg" : "bg-transparent"
         }`}
         onMouseLeave={handleNavbarMouseLeave}
         style={{
           transform: "translateZ(0)",
           backfaceVisibility: "hidden",
+          isolation: "isolate",
         }}
       >
         <div className="w-full px-4 md:px-6 lg:px-8">
@@ -693,36 +779,55 @@ const Navbar = () => {
 
             {/* Right side */}
             <div className="absolute right-0 flex items-center space-x-3">
-              {/* Hamburger – DISSEMBUNYIKAN SAAT MENU OPEN */}
+              {/* 
+                HAMBURGER/CLOSE BUTTON - SINGLE SOURCE OF TRUTH
+                - Posisi dan ukuran tetap sama
+                - Icon morph dengan GSAP
+                - Aksesibilitas lengkap
+              */}
               <button
                 type="button"
-                className={`relative flex md:hidden h-9 w-9 items-center justify-center rounded-full border border-white/25 hover:border-white/70 transition-all duration-300 ${
-                  isMenuOpen ? "opacity-0 pointer-events-none" : "opacity-100"
-                }`}
+                className="relative flex md:hidden h-9 w-9 items-center justify-center rounded-full border border-white/25 hover:border-white/70 transition-colors duration-300 z-[10000]"
                 onClick={toggleMenu}
-                aria-label="Toggle navigation"
+                aria-label={isMenuOpen ? "Close navigation" : "Open navigation"}
+                aria-expanded={isMenuOpen}
+                aria-controls="mobile-menu-overlay"
+                style={{
+                  isolation: "isolate",
+                }}
               >
-                <span className="sr-only">Toggle navigation</span>
+                <span className="sr-only">
+                  {isMenuOpen ? "Close navigation" : "Open navigation"}
+                </span>
+
+                {/* Top line */}
                 <span
-                  className={`absolute h-[1.5px] w-5 bg-white transition-transform duration-300 ease-[cubic-bezier(0.19,1,0.22,1)] ${
-                    isMenuOpen
-                      ? "translate-y-0 rotate-45"
-                      : "-translate-y-[5px] rotate-0"
-                  }`}
+                  ref={hamburgerTopRef}
+                  className="line-top absolute h-[1.5px] w-5 bg-white"
+                  style={{
+                    transformOrigin: "center center",
+                    willChange: "transform",
+                  }}
                 />
+
+                {/* Middle line */}
                 <span
-                  className={`absolute h-[1.5px] w-5 bg-white transition-all duration-250 ease-[cubic-bezier(0.19,1,0.22,1)] ${
-                    isMenuOpen
-                      ? "opacity-0 scale-x-0"
-                      : "opacity-100 scale-x-100"
-                  }`}
+                  ref={hamburgerMiddleRef}
+                  className="line-middle absolute h-[1.5px] w-5 bg-white"
+                  style={{
+                    transformOrigin: "center center",
+                    willChange: "transform, opacity",
+                  }}
                 />
+
+                {/* Bottom line */}
                 <span
-                  className={`absolute h-[1.5px] w-5 bg-white transition-transform duration-300 ease-[cubic-bezier(0.19,1,0.22,1)] ${
-                    isMenuOpen
-                      ? "translate-y-0 -rotate-45"
-                      : "translate-y-[5px] rotate-0"
-                  }`}
+                  ref={hamburgerBottomRef}
+                  className="line-bottom absolute h-[1.5px] w-5 bg-white"
+                  style={{
+                    transformOrigin: "center center",
+                    willChange: "transform",
+                  }}
                 />
               </button>
 
