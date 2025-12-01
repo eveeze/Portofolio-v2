@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import type React from "react";
-import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { gsap } from "gsap";
 import { SplitText } from "gsap/SplitText";
@@ -680,71 +679,17 @@ const Navbar = () => {
   }, [cleanupAnimation]);
 
   // ========== OVERLAY PORTAL ==========
-  const overlayNode =
-    typeof document !== "undefined"
-      ? createPortal(
-          <div
-            ref={menuOverlayRef}
-            id="mobile-menu-overlay"
-            className="fixed inset-0 z-[9997] h-[100dvh] w-full md:hidden overflow-hidden overscroll-none"
-          >
-            {/* bubble circle yang di-scale dari pojok kanan atas */}
-            <div
-              ref={bubbleRef}
-              className="absolute -top-[60vmax] -right-[60vmax] w-[200vmax] h-[200vmax] rounded-full bg-background2"
-            />
-
-            {/* konten menu */}
-            <div className="relative z-10 flex h-full w-full flex-col text-white">
-              {/* links center - NO SEPARATE CLOSE BUTTON */}
-              <div className="flex-1 flex items-center justify-center px-5 pt-16">
-                <div className="w-full max-w-xs space-y-3">
-                  {navItems.map((item, index) => (
-                    <div
-                      key={item.path}
-                      ref={setMenuItemRef(index)}
-                      className="overflow-hidden"
-                    >
-                      <Link
-                        to={item.path}
-                        onClick={toggleMenu}
-                        onMouseEnter={() => handleMenuItemHover(index, true)}
-                        onMouseLeave={() => handleMenuItemHover(index, false)}
-                        className="menu-link-inner flex items-center justify-between text-white tracking-[0.18em] uppercase"
-                      >
-                        <span className="font-centsbook text-[clamp(1.1rem,2.7vw,1.4rem)] leading-none transition-transform duration-300 ease-out hover:translate-x-1">
-                          {item.label}
-                        </span>
-                        <span
-                          ref={setMenuArrowRef(index)}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/35"
-                        >
-                          <ArrowTopRightIcon className="h-3.5 w-3.5" />
-                        </span>
-                      </Link>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )
-      : null;
-
-  // ========== MAIN NAVBAR ==========
   return (
     <>
+      {/* NAVBAR */}
       <nav
         ref={navRef}
-        className={`sticky top-0 left-0 right-0 z-[9999] font-centsbook transition-colors duration-300 ease-out ${
-          isMenuOpen ? "bg-background2/95 backdrop-blur-lg" : "bg-transparent"
-        }`}
+        className="sticky top-0 left-0 right-0 font-centsbook transition-colors duration-300 ease-out bg-transparent"
         onMouseLeave={handleNavbarMouseLeave}
         style={{
           transform: "translateZ(0)",
           backfaceVisibility: "hidden",
-          isolation: "isolate",
+          zIndex: 10001,
         }}
       >
         <div className="w-full px-4 md:px-6 lg:px-8">
@@ -767,7 +712,7 @@ const Navbar = () => {
             <div
               className="absolute pointer-events-none"
               style={{
-                left: "50%",
+                left: "47.5%",
                 top: "50%",
                 transform: "translate(-50%, -50%)",
               }}
@@ -779,22 +724,14 @@ const Navbar = () => {
 
             {/* Right side */}
             <div className="absolute right-0 flex items-center space-x-3">
-              {/* 
-                HAMBURGER/CLOSE BUTTON - SINGLE SOURCE OF TRUTH
-                - Posisi dan ukuran tetap sama
-                - Icon morph dengan GSAP
-                - Aksesibilitas lengkap
-              */}
+              {/* SATU tombol hamburger/close - SELALU ada */}
               <button
                 type="button"
-                className="relative flex md:hidden h-9 w-9 items-center justify-center rounded-full border border-white/25 hover:border-white/70 transition-colors duration-300 z-[10000]"
+                className="relative flex md:hidden h-9 w-9 items-center justify-center rounded-full border border-white/25 hover:border-white/70 transition-colors duration-300"
                 onClick={toggleMenu}
                 aria-label={isMenuOpen ? "Close navigation" : "Open navigation"}
                 aria-expanded={isMenuOpen}
                 aria-controls="mobile-menu-overlay"
-                style={{
-                  isolation: "isolate",
-                }}
               >
                 <span className="sr-only">
                   {isMenuOpen ? "Close navigation" : "Open navigation"}
@@ -862,7 +799,53 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {overlayNode}
+      {/* OVERLAY - BUKAN PORTAL, langsung sibling dengan navbar */}
+      <div
+        ref={menuOverlayRef}
+        id="mobile-menu-overlay"
+        className="fixed inset-0 h-[100dvh] w-full md:hidden overflow-hidden overscroll-none"
+        style={{ zIndex: 10000 }}
+      >
+        {/* bubble circle yang di-scale dari pojok kanan atas */}
+        <div
+          ref={bubbleRef}
+          className="absolute -top-[60vmax] -right-[60vmax] w-[200vmax] h-[200vmax] rounded-full bg-background2"
+        />
+
+        {/* konten menu */}
+        <div className="relative z-10 flex h-full w-full flex-col text-white">
+          {/* links center */}
+          <div className="flex-1 flex items-center justify-center px-5 pt-16">
+            <div className="w-full max-w-xs space-y-3">
+              {navItems.map((item, index) => (
+                <div
+                  key={item.path}
+                  ref={setMenuItemRef(index)}
+                  className="overflow-hidden"
+                >
+                  <Link
+                    to={item.path}
+                    onClick={toggleMenu}
+                    onMouseEnter={() => handleMenuItemHover(index, true)}
+                    onMouseLeave={() => handleMenuItemHover(index, false)}
+                    className="menu-link-inner flex items-center justify-between text-white tracking-[0.18em] uppercase"
+                  >
+                    <span className="font-centsbook text-[clamp(1.1rem,2.7vw,1.4rem)] leading-none transition-transform duration-300 ease-out hover:translate-x-1">
+                      {item.label}
+                    </span>
+                    <span
+                      ref={setMenuArrowRef(index)}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/35"
+                    >
+                      <ArrowTopRightIcon className="h-3.5 w-3.5" />
+                    </span>
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
     </>
   );
 };
