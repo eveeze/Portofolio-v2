@@ -1,7 +1,7 @@
-import React, { useLayoutEffect, useMemo, useRef } from "react";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { useTechStacks } from "../../../hooks/useTechStacks";
+import React, { useLayoutEffect, useMemo, useRef } from 'react';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useTechStacks } from '../../../hooks/useTechStacks';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -9,19 +9,19 @@ gsap.registerPlugin(ScrollTrigger);
 // HELPER: SPLIT TEXT INTO CHARS (di luar komponen)
 // ===========================
 const splitChars = (el: HTMLElement) => {
-  const text = el.textContent || "";
-  el.innerHTML = "";
+  const text = el.textContent || '';
+  el.innerHTML = '';
   const chars: HTMLSpanElement[] = [];
 
-  text.split(" ").forEach((word, wIndex, arr) => {
-    const wrap = document.createElement("span");
-    wrap.style.display = "inline-block";
-    wrap.style.overflow = "hidden";
+  text.split(' ').forEach((word, wIndex, arr) => {
+    const wrap = document.createElement('span');
+    wrap.style.display = 'inline-block';
+    wrap.style.overflow = 'hidden';
 
-    word.split("").forEach((c) => {
-      const span = document.createElement("span");
+    word.split('').forEach((c) => {
+      const span = document.createElement('span');
       span.textContent = c;
-      span.className = "char inline-block";
+      span.className = 'char inline-block';
       wrap.appendChild(span);
       chars.push(span);
     });
@@ -29,9 +29,9 @@ const splitChars = (el: HTMLElement) => {
     el.appendChild(wrap);
 
     if (wIndex < arr.length - 1) {
-      const space = document.createElement("span");
-      space.textContent = " ";
-      space.className = "char inline-block";
+      const space = document.createElement('span');
+      space.textContent = ' ';
+      space.className = 'char inline-block';
       el.appendChild(space);
       chars.push(space);
     }
@@ -96,13 +96,13 @@ const Hero: React.FC = () => {
     const createInfiniteRibbon = (
       wrapper: HTMLDivElement,
       baseSpeed: number,
-      direction: "left" | "right" = "left"
+      direction: 'left' | 'right' = 'left',
     ) => {
       const track = wrapper.querySelector(
-        ".ribbon-track"
+        '.ribbon-track',
       ) as HTMLElement | null;
       const firstSegment = wrapper.querySelector(
-        ".ribbon-segment"
+        '.ribbon-segment',
       ) as HTMLElement | null;
 
       if (!track || !firstSegment) return;
@@ -112,8 +112,8 @@ const Hero: React.FC = () => {
 
       const duration = segmentWidth / baseSpeed;
 
-      const fromX = direction === "left" ? 0 : -segmentWidth;
-      const toX = direction === "left" ? -segmentWidth : 0;
+      const fromX = direction === 'left' ? 0 : -segmentWidth;
+      const toX = direction === 'left' ? -segmentWidth : 0;
 
       const tween = gsap.fromTo(
         track,
@@ -121,20 +121,20 @@ const Hero: React.FC = () => {
         {
           x: toX,
           duration,
-          ease: "none",
+          ease: 'none',
           repeat: -1,
-        }
+        },
       );
 
       ribbonTweens.push(tween);
     };
 
     if (ribbonARef.current) {
-      createInfiniteRibbon(ribbonARef.current, 50, "left");
+      createInfiniteRibbon(ribbonARef.current, 50, 'left');
     }
 
     if (ribbonBRef.current) {
-      createInfiniteRibbon(ribbonBRef.current, 35, "right");
+      createInfiniteRibbon(ribbonBRef.current, 35, 'right');
     }
 
     return () => {
@@ -147,7 +147,7 @@ const Hero: React.FC = () => {
   // ===========================
   useLayoutEffect(() => {
     const headerChars = topHeaderRefs.current.flatMap((el) =>
-      el ? splitChars(el) : []
+      el ? splitChars(el) : [],
     );
     const fullstackChars = fullstackTitleRef.current
       ? splitChars(fullstackTitleRef.current)
@@ -158,10 +158,10 @@ const Hero: React.FC = () => {
 
     const tl = gsap.timeline({ delay: 0.3 });
 
-    gsap.set(headerChars, { opacity: 0, y: "100%", force3D: true });
+    gsap.set(headerChars, { opacity: 0, y: '100%', force3D: true });
     gsap.set([...fullstackChars, ...developerChars], {
       opacity: 0,
-      y: "100%",
+      y: '100%',
       force3D: true,
     });
     if (profileImageRef.current) {
@@ -170,37 +170,37 @@ const Hero: React.FC = () => {
 
     tl.to(headerChars, {
       opacity: 1,
-      y: "0%",
+      y: '0%',
       duration: 0.8,
       stagger: {
         amount: Math.min(0.02 * headerChars.length, 0.8),
       },
-      ease: "power2.out",
+      ease: 'power2.out',
     })
       .to(
         profileImageRef.current,
-        { opacity: 1, scale: 1, duration: 1.2, ease: "power3.out" },
-        0.6
+        { opacity: 1, scale: 1, duration: 1.2, ease: 'power3.out' },
+        0.6,
       )
       .to(
         fullstackChars,
         {
           opacity: 1,
-          y: "0%",
+          y: '0%',
           duration: 0.8,
           stagger: { amount: 0.4 },
         },
-        1.0
+        1.0,
       )
       .to(
         developerChars,
         {
           opacity: 1,
-          y: "0%",
+          y: '0%',
           duration: 0.8,
           stagger: { amount: 0.4 },
         },
-        1.4
+        1.4,
       );
 
     // Quote skew scroll animation
@@ -230,9 +230,9 @@ const Hero: React.FC = () => {
       if (distance > 0) {
         gsap.set(quote, { x: 0, skewX: 0 });
 
-        const skewTo = gsap.quickTo(quote, "skewX", {
+        const skewTo = gsap.quickTo(quote, 'skewX', {
           duration: 0.3,
-          ease: "power3.out",
+          ease: 'power3.out',
         });
 
         let prevProgress = 0;
@@ -240,7 +240,7 @@ const Hero: React.FC = () => {
 
         st = ScrollTrigger.create({
           trigger: wrapper,
-          start: "top top",
+          start: 'top top',
           end: `+=${scrollSpan}`,
           scrub: 0.6,
           onUpdate: (self) => {
@@ -281,8 +281,8 @@ const Hero: React.FC = () => {
       <div className="sticky top-0 h-screen overflow-hidden">
         <div className="flex flex-col h-full px-4 sm:px-8 lg:px-12">
           {/* Top Header */}
-          <div className="flex justify-between items-start pt-4 sm:pt-7 lg:pt-15">
-            {/* base & sm diperkecil padding-top supaya header turun mendekati foto */}
+          <div className="flex justify-between items-start pt-16 sm:pt-20 md:pt-7 lg:pt-15">
+            {/* Padding top diperbesar di mobile agar tidak tabrakan dengan navbar */}
             <h1
               ref={setTopHeaderRef(0)}
               className="text-2xl sm:text-3xl lg:text-4xl font-oggs font-bold tracking-tighter text-grayText"
@@ -309,16 +309,15 @@ const Hero: React.FC = () => {
             mt-3 sm:mt-4 md:-mt-1 lg:-mt-2 xl:-mt-3
             flex-wrap"
           >
-            {/* mt base & sm dibesarkan sedikit supaya blok judul turun mendekati foto */}
             <h1
               ref={fullstackTitleRef}
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-oggs font-bold text-whiteText mr-4 sm:mr-6 lg:mr-8"
+              className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-7xl font-oggs font-bold text-whiteText mr-4 sm:mr-6 lg:mr-8"
             >
               FULLSTACK
             </h1>
             <h1
               ref={developerTitleRef}
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-oggs font-bold text-whiteText"
+              className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-7xl font-oggs font-bold text-whiteText"
             >
               DEVELOPER
             </h1>
@@ -332,8 +331,8 @@ const Hero: React.FC = () => {
                 ref={ribbonARef}
                 className="absolute w-[180vw] h-16 sm:h-20 md:h-24 lg:h-28 overflow-hidden left-1/2 top-1/2 z-[1] border-y border-whiteText/35"
                 style={{
-                  transform: "translate(-50%, -50%) rotate(-12deg)",
-                  transformOrigin: "center",
+                  transform: 'translate(-50%, -50%) rotate(-12deg)',
+                  transformOrigin: 'center',
                 }}
               >
                 <div className="ribbon-track absolute inset-0 flex items-center whitespace-nowrap will-change-transform">
@@ -354,8 +353,8 @@ const Hero: React.FC = () => {
                 ref={ribbonBRef}
                 className="absolute w-[180vw] h-16 sm:h-20 md:h-24 lg:h-28 overflow-hidden left-1/2 top-1/2 z-[1] border-y border-whiteText/25"
                 style={{
-                  transform: "translate(-50%, -50%) rotate(12deg)",
-                  transformOrigin: "center",
+                  transform: 'translate(-50%, -50%) rotate(12deg)',
+                  transformOrigin: 'center',
                 }}
               >
                 <div className="ribbon-track absolute inset-0 flex items-center whitespace-nowrap will-change-transform">
@@ -375,7 +374,6 @@ const Hero: React.FC = () => {
 
           {/* PROFILE IMAGE */}
           <div className="absolute inset-0 flex items-center justify-center z-[5] pointer-events-none -translate-y-10 sm:-translate-y-8 md:translate-y-0">
-            {/* base & sm lebih naik sedikit sehingga gap ke judul mengecil */}
             <div
               ref={profileImageRef}
               className="w-56 h-56 sm:w-64 sm:h-64 md:w-72 md:h-72 lg:w-80 lg:h-80 overflow-hidden"
@@ -392,13 +390,13 @@ const Hero: React.FC = () => {
         {/* Quotes */}
         <div
           ref={quoteContainerRef}
-          className="absolute left-0 right-0 w-full overflow-hidden z-10 bottom-16 sm:bottom-20 md:bottom-3"
+          className="absolute left-0 right-0 w-full overflow-hidden z-10 bottom-6 sm:bottom-12 md:bottom-3"
         >
-          {/* bottom base & sm dinaikkan (nilai lebih besar) → quote lebih dekat ke foto */}
+          {/* bottom dikurangi di mobile agar quote lebih turun dan tidak terlalu dekat foto */}
           <div
             ref={quoteRef}
-            className="inline-block whitespace-nowrap will-change-transform text-6xl sm:text-8xl md:text-8xl lg:text-9xl xl:text-[160px] 2xl:text-[192px] text-whiteText font-oggs uppercase tracking-tight"
-            style={{ lineHeight: "1.08", paddingLeft: "2px" }}
+            className="inline-block whitespace-nowrap will-change-transform text-[80px] sm:text-8xl md:text-8xl lg:text-9xl xl:text-[160px] 2xl:text-[192px] text-whiteText font-oggs uppercase tracking-tight"
+            style={{ lineHeight: '1.08', paddingLeft: '2px' }}
           >
             ELEVATING USER EXPERIENCES THROUGH OPTIMIZED CODE.
           </div>
