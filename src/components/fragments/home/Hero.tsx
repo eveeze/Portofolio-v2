@@ -1,9 +1,21 @@
+// src/components/fragments/home/Hero.tsx
 import React, { useLayoutEffect, useMemo, useRef } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useTechStacks } from '../../../hooks/useTechStacks';
 
 gsap.registerPlugin(ScrollTrigger);
+
+// ===========================
+// SMALL UTILS
+// ===========================
+const debounce = <T extends (...args: any[]) => void>(fn: T, wait = 150) => {
+  let t: number | undefined;
+  return (...args: Parameters<T>) => {
+    if (t) window.clearTimeout(t);
+    t = window.setTimeout(() => fn(...args), wait);
+  };
+};
 
 // ===========================
 // HELPER: SPLIT TEXT INTO CHARS (di luar komponen)
@@ -47,6 +59,7 @@ const Hero: React.FC = () => {
   const fullstackTitleRef = useRef<HTMLHeadingElement>(null);
   const developerTitleRef = useRef<HTMLHeadingElement>(null);
   const profileImageRef = useRef<HTMLDivElement>(null);
+
   const quoteRef = useRef<HTMLDivElement>(null);
   const quoteContainerRef = useRef<HTMLDivElement>(null);
 
@@ -76,6 +89,8 @@ const Hero: React.FC = () => {
             src={stack.imageUrl}
             alt={stack.name}
             className="techstack-icon h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 object-contain"
+            loading="lazy"
+            decoding="async"
           />
         )}
         <span className="text-sm sm:text-base md:text-lg tracking-wider uppercase font-centsbook text-whiteText/80">
@@ -86,7 +101,7 @@ const Hero: React.FC = () => {
   }, [stacks, isLoading, isEmpty]);
 
   // ===========================
-  // INFINITE RIBBON LOOP
+  // INFINITE RIBBON LOOP (lighter + stable)
   // ===========================
   useLayoutEffect(() => {
     if (isEmpty || isLoading) return;
@@ -111,7 +126,6 @@ const Hero: React.FC = () => {
       if (!segmentWidth) return;
 
       const duration = segmentWidth / baseSpeed;
-
       const fromX = direction === 'left' ? 0 : -segmentWidth;
       const toX = direction === 'left' ? -segmentWidth : 0;
 
@@ -123,117 +137,149 @@ const Hero: React.FC = () => {
           duration,
           ease: 'none',
           repeat: -1,
+          force3D: true,
         },
       );
 
       ribbonTweens.push(tween);
     };
 
-    if (ribbonARef.current) {
+    if (ribbonARef.current)
       createInfiniteRibbon(ribbonARef.current, 50, 'left');
-    }
-
-    if (ribbonBRef.current) {
+    if (ribbonBRef.current)
       createInfiniteRibbon(ribbonBRef.current, 35, 'right');
-    }
 
     return () => {
       ribbonTweens.forEach((t) => t.kill());
     };
-  }, [isEmpty, isLoading, ribbonARef, ribbonBRef]);
+  }, [isEmpty, isLoading]);
 
   // ===========================
-  // TEXT & QUOTE ANIMATIONS
+  // TEXT + QUOTE ANIMATIONS (mobile slow + less jitter)
   // ===========================
   useLayoutEffect(() => {
-    const headerChars = topHeaderRefs.current.flatMap((el) =>
-      el ? splitChars(el) : [],
-    );
-    const fullstackChars = fullstackTitleRef.current
-      ? splitChars(fullstackTitleRef.current)
-      : [];
-    const developerChars = developerTitleRef.current
-      ? splitChars(developerTitleRef.current)
-      : [];
+    const reduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const tl = gsap.timeline({ delay: 0.3 });
+    const isTouch =
+      typeof window !== 'undefined' &&
+      window.matchMedia &&
+      window.matchMedia('(pointer: coarse)').matches;
 
-    gsap.set(headerChars, { opacity: 0, y: '100%', force3D: true });
-    gsap.set([...fullstackChars, ...developerChars], {
-      opacity: 0,
-      y: '100%',
-      force3D: true,
-    });
-    if (profileImageRef.current) {
-      gsap.set(profileImageRef.current, { opacity: 0, scale: 0.8 });
-    }
+    // If reduced motion, skip heavy scroll stuff, but still render layout.
+    if (reduced) return;
 
-    tl.to(headerChars, {
-      opacity: 1,
-      y: '0%',
-      duration: 0.8,
-      stagger: {
-        amount: Math.min(0.02 * headerChars.length, 0.8),
-      },
-      ease: 'power2.out',
-    })
-      .to(
-        profileImageRef.current,
-        { opacity: 1, scale: 1, duration: 1.2, ease: 'power3.out' },
-        0.6,
-      )
-      .to(
-        fullstackChars,
-        {
-          opacity: 1,
-          y: '0%',
-          duration: 0.8,
-          stagger: { amount: 0.4 },
-        },
-        1.0,
-      )
-      .to(
-        developerChars,
-        {
-          opacity: 1,
-          y: '0%',
-          duration: 0.8,
-          stagger: { amount: 0.4 },
-        },
-        1.4,
+    const ctx = gsap.context(() => {
+      // ---- Intro text animation (split)
+      const headerChars = topHeaderRefs.current.flatMap((el) =>
+        el ? splitChars(el) : [],
       );
+      const fullstackChars = fullstackTitleRef.current
+        ? splitChars(fullstackTitleRef.current)
+        : [];
+      const developerChars = developerTitleRef.current
+        ? splitChars(developerTitleRef.current)
+        : [];
 
-    // Quote skew scroll animation
-    let st: ScrollTrigger | null = null;
-    let idleTimeout: number | undefined;
+      const tl = gsap.timeline({ delay: 0.25 });
 
-    if (
-      quoteRef.current &&
-      quoteContainerRef.current &&
-      heroWrapperRef.current
-    ) {
-      const quote = quoteRef.current;
-      const container = quoteContainerRef.current;
-      const wrapper = heroWrapperRef.current;
-
-      const textWidth = quote.scrollWidth;
-      const containerWidth = container.clientWidth;
-      const distance = Math.max(textWidth - containerWidth, 0);
-      const viewport = window.innerHeight;
-      const scrollSpan =
-        distance > 0 ? Math.max(viewport * 0.9, distance * 0.45) : 0;
-
-      gsap.set(wrapper, {
-        minHeight: viewport + scrollSpan + viewport * 0.2,
+      gsap.set(headerChars, { opacity: 0, yPercent: 120, force3D: true });
+      gsap.set([...fullstackChars, ...developerChars], {
+        opacity: 0,
+        yPercent: 120,
+        force3D: true,
       });
 
-      if (distance > 0) {
-        gsap.set(quote, { x: 0, skewX: 0 });
+      if (profileImageRef.current) {
+        gsap.set(profileImageRef.current, { opacity: 0, scale: 0.86 });
+      }
 
+      tl.to(headerChars, {
+        opacity: 1,
+        yPercent: 0,
+        duration: 0.85,
+        stagger: { amount: Math.min(0.02 * headerChars.length, 0.85) },
+        ease: 'power2.out',
+      })
+        .to(
+          profileImageRef.current,
+          { opacity: 1, scale: 1, duration: 1.15, ease: 'power3.out' },
+          0.55,
+        )
+        .to(
+          fullstackChars,
+          {
+            opacity: 1,
+            yPercent: 0,
+            duration: 0.85,
+            stagger: { amount: 0.45 },
+          },
+          0.95,
+        )
+        .to(
+          developerChars,
+          {
+            opacity: 1,
+            yPercent: 0,
+            duration: 0.85,
+            stagger: { amount: 0.45 },
+          },
+          1.25,
+        );
+
+      // ---- Quote scroll animation
+      let st: ScrollTrigger | null = null;
+      let idleTimeout: number | undefined;
+
+      const setupQuote = () => {
+        if (
+          !quoteRef.current ||
+          !quoteContainerRef.current ||
+          !heroWrapperRef.current
+        )
+          return;
+
+        const quote = quoteRef.current;
+        const container = quoteContainerRef.current;
+        const wrapper = heroWrapperRef.current;
+
+        // recompute sizes
+        const textWidth = quote.scrollWidth;
+        const containerWidth = container.clientWidth;
+        const distance = Math.max(textWidth - containerWidth, 0);
+
+        // nothing to animate
+        if (distance <= 0) {
+          gsap.set(wrapper, { minHeight: '100vh' });
+          gsap.set(quote, { clearProps: 'transform' });
+          if (st) st.kill();
+          st = null;
+          return;
+        }
+
+        // Make the scroll span longer on touch so it feels "slow" and smooth
+        const viewport = window.innerHeight;
+        const baseSpan = Math.max(viewport * 0.95, distance * 0.7);
+        const scrollSpan = isTouch ? baseSpan * 1.9 : baseSpan * 1.25;
+
+        // Give a tiny extra so transition to next section doesn’t "snap"
+        gsap.set(wrapper, {
+          minHeight: viewport + scrollSpan + viewport * 0.35,
+        });
+
+        // kill old trigger if any
+        if (st) st.kill();
+
+        // Use quickSetter for x (cheaper), quickTo for skew (smooth)
+        const setX = gsap.quickSetter(quote, 'x', 'px');
         const skewTo = gsap.quickTo(quote, 'skewX', {
-          duration: 0.3,
+          duration: isTouch ? 0.45 : 0.28,
           ease: 'power3.out',
         });
+
+        gsap.set(quote, { x: 0, skewX: 0, force3D: true });
 
         let prevProgress = 0;
         let smoothedDelta = 0;
@@ -242,35 +288,62 @@ const Hero: React.FC = () => {
           trigger: wrapper,
           start: 'top top',
           end: `+=${scrollSpan}`,
-          scrub: 0.6,
+          scrub: isTouch ? 1.35 : 0.75, // touch slower (more damped)
+          fastScrollEnd: true,
+          invalidateOnRefresh: true,
+          // IMPORTANT: if Lenis uses body as scrollerProxy, keep it consistent
+          scroller: document.body,
           onUpdate: (self) => {
             const p = self.progress;
 
-            gsap.set(quote, {
-              x: gsap.utils.mapRange(0, 1, 0, -distance, p),
-            });
+            // map progress to x
+            setX(-distance * p);
 
+            // skew based on delta (clamped + slower on touch)
             const delta = p - prevProgress;
             prevProgress = p;
-            smoothedDelta += (delta - smoothedDelta) * 0.35;
 
-            const rawSkew = smoothedDelta * 1500;
-            const targetSkew = gsap.utils.clamp(-55, 55, rawSkew);
+            const smoothing = isTouch ? 0.18 : 0.35;
+            smoothedDelta += (delta - smoothedDelta) * smoothing;
+
+            const strength = isTouch ? 650 : 1500;
+            const rawSkew = smoothedDelta * strength;
+            const targetSkew = gsap.utils.clamp(-45, 45, rawSkew);
 
             skewTo(targetSkew);
 
             if (idleTimeout) clearTimeout(idleTimeout);
-            idleTimeout = window.setTimeout(() => skewTo(0), 120);
+            idleTimeout = window.setTimeout(
+              () => skewTo(0),
+              isTouch ? 160 : 120,
+            );
           },
         });
-      }
-    }
+      };
 
-    return () => {
-      tl.kill();
-      if (st) st.kill();
-      if (idleTimeout) clearTimeout(idleTimeout);
-    };
+      // initial setup after fonts/layout settle a bit
+      const initTimer = window.setTimeout(() => {
+        setupQuote();
+        ScrollTrigger.refresh();
+      }, 120);
+
+      const onResize = debounce(() => {
+        setupQuote();
+        ScrollTrigger.refresh();
+      }, 180);
+
+      window.addEventListener('resize', onResize, { passive: true });
+
+      return () => {
+        window.clearTimeout(initTimer);
+        window.removeEventListener('resize', onResize);
+        if (idleTimeout) clearTimeout(idleTimeout);
+        if (st) st.kill();
+        tl.kill();
+      };
+    }, heroWrapperRef);
+
+    return () => ctx.revert();
   }, []);
 
   // ===========================
@@ -278,11 +351,11 @@ const Hero: React.FC = () => {
   // ===========================
   return (
     <div ref={heroWrapperRef} className="relative bg-background2">
-      <div className="sticky top-0 h-screen overflow-hidden">
+      {/* Sticky stage */}
+      <div className="sticky top-0 h-[100svh] overflow-hidden">
         <div className="flex flex-col h-full px-4 sm:px-8 lg:px-12">
           {/* Top Header */}
-          <div className="flex justify-between items-start pt-16 sm:pt-20 md:pt-7 lg:pt-15">
-            {/* Padding top diperbesar di mobile agar tidak tabrakan dengan navbar */}
+          <div className="flex justify-between items-start pt-16 sm:pt-20 md:pt-7 lg:pt-14">
             <h1
               ref={setTopHeaderRef(0)}
               className="text-2xl sm:text-3xl lg:text-4xl font-oggs font-bold tracking-tighter text-grayText"
@@ -382,6 +455,8 @@ const Hero: React.FC = () => {
                 src="/images/pp.jpg"
                 alt="Profile"
                 className="w-full h-full object-cover"
+                loading="eager"
+                decoding="async"
               />
             </div>
           </div>
@@ -390,12 +465,18 @@ const Hero: React.FC = () => {
         {/* Quotes */}
         <div
           ref={quoteContainerRef}
-          className="absolute left-0 right-0 w-full overflow-hidden z-10 bottom-6 sm:bottom-12 md:bottom-3"
+          className="
+            absolute left-0 right-0 w-full overflow-hidden z-10
+            bottom-7 sm:bottom-7 md:bottom-2 lg:bottom-3 xl:bottom-4
+          "
         >
-          {/* bottom dikurangi di mobile agar quote lebih turun dan tidak terlalu dekat foto */}
           <div
             ref={quoteRef}
-            className="inline-block whitespace-nowrap will-change-transform text-[80px] sm:text-8xl md:text-8xl lg:text-9xl xl:text-[160px] 2xl:text-[192px] text-whiteText font-oggs uppercase tracking-tight"
+            className="
+              inline-block whitespace-nowrap will-change-transform
+              text-[92px] sm:text-8xl md:text-8xl lg:text-9xl xl:text-[160px] 2xl:text-[192px]
+              text-whiteText font-oggs uppercase tracking-tight
+            "
             style={{ lineHeight: '1.08', paddingLeft: '2px' }}
           >
             ELEVATING USER EXPERIENCES THROUGH OPTIMIZED CODE.
